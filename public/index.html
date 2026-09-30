@@ -3526,17 +3526,18 @@ async function porEmRota(v, motorista, comEvento, obsExtra){
    equipe já usa no WhatsApp.
    ========================================================= */
 const mapa = end => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(end);
-/* A viagem é o veículo do pátio mais as coletas que seguem com ele.
-   Ordem: sai da base, faz as coletas, entrega as coletas, entrega o
-   do pátio — é a sequência mais comum; quem souber de uma melhor
-   ajusta o texto na ficha, que fica salvo. */
 function montarOS(v){
-  if(v.direta){
-    const par = v.junto && dados.veiculos.find(x => x.id === v.junto);
-    return par ? montarOSViagem(par) : montarOSColeta(v);
-  }
-  if(coletasDe(v).length) return montarOSViagem(v);
-  return montarOSSimples(v);
+  return v.direta ? montarOSColeta(v) : montarOSSimples(v);
+}
+/* Uma OS por veículo: juntas ficavam longas demais para o guincheiro ler
+   no celular. O vínculo aparece numa linha só, para ele saber que a
+   outra OS existe e vai no mesmo guincho. */
+function linhaJunto(v){
+  const outros = v.direta
+    ? [v.junto && dados.veiculos.find(x => x.id === v.junto)].filter(Boolean)
+    : coletasDe(v);
+  if(!outros.length) return "";
+  return "🔗 *Segue no mesmo guincho:* " + outros.map(x => (x.modelo || "veículo") + " " + (x.placa || "")).join(", ");
 }
 const endCompleto = v => v.destino ? destinoLegivel(v.destino) + (v.cidade ? " - " + v.cidade : "") : "";
 function linhasVeiculo(L, v){
@@ -3546,7 +3547,7 @@ function linhasVeiculo(L, v){
     L.push("*Seguro:* " + (v.seguradora || "—") + (v.assistencia ? " | *Ass.:* " + v.assistencia : ""));
   if(v.pt)      L.push("⚠️ *PERDA TOTAL*");
   if(v.travado) L.push("⚠️ Rodas ou câmbio travado — necessário prancha");
-  if(v.condicao) L.push("*Problema:* " + v.condicao);
+  if(v.condicao && v.condicao !== "Outro") L.push("*Problema:* " + v.condicao);
 }
 function linkDoDestino(v){
   const ponto = coordenadaEm(v.destino);
@@ -3558,47 +3559,9 @@ function montarOSColeta(v){
   if(v.origem){ L.push(""); L.push("📍 *Coletar em:* " + v.origem); L.push(mapa(v.origem)); }
   if(v.destino){ L.push(""); L.push("📍 *Entregar em:* " + endCompleto(v)); L.push(linkDoDestino(v)); }
   if(v.data){ L.push(""); L.push("⏰ *Agendamento:* " + fmtData(v.data) + (v.hora ? " às " + fmtHora(v.hora) : "")); }
+  if(linhaJunto(v)){ L.push(""); L.push(linhaJunto(v)); }
   if(v.obs){ L.push(""); L.push("*Obs:* " + v.obs); }
   L.push(""); L.push("📋 Enviar checklist imediatamente após a entrega do veículo.");
-  return L.join("\n");
-}
-function montarOSViagem(p){
-  const cs = coletasDe(p);
-  const L = ["*SAÍDA DE BASE + " + cs.length + " FORA DE BASE*", ""];
-  let n = 1;
-  const passo = (t) => L.push("*" + (n++) + ")* " + t);
-  const base = ENDERECO_BASE + ", Santos/SP";
-  passo("*Retirar na base* — " + base);
-  L.push(mapa(base)); L.push("");
-  linhasVeiculo(L, p);
-  cs.forEach(c => {
-    L.push("");
-    passo("*Coletar* — " + (c.origem || "endereço a confirmar"));
-    if(c.origem) L.push(mapa(c.origem));
-    if(c.data) L.push("⏰ " + fmtData(c.data) + (c.hora ? " às " + fmtHora(c.hora) : ""));
-    L.push("");
-    linhasVeiculo(L, c);
-  });
-  cs.forEach(c => {
-    L.push("");
-    passo("*Entregar " + (c.modelo || c.placa || "veículo") + "* — " + (endCompleto(c) || "destino a confirmar"));
-    if(c.destino) L.push(linkDoDestino(c));
-  });
-  L.push("");
-  passo("*Entregar " + (p.modelo || p.placa || "veículo da base") + "* — " + (endCompleto(p) || "destino a confirmar"));
-  if(p.destino) L.push(linkDoDestino(p));
-  if(p.data){ L.push(""); L.push("⏰ *Saída da base:* " + fmtData(p.data) + (p.hora ? " às " + fmtHora(p.hora) : "")); }
-  /* rota inteira num link só, na ordem acima */
-  const paradas = cs.map(c => c.origem).concat(cs.map(endCompleto)).concat([endCompleto(p)]).filter(Boolean);
-  if(paradas.length){
-    const fim = paradas.pop();
-    L.push(""); L.push("🗺️ *Rota completa:*");
-    L.push("https://www.google.com/maps/dir/?api=1&origin=" + encodeURIComponent(base) +
-      "&destination=" + encodeURIComponent(fim) +
-      (paradas.length ? "&waypoints=" + paradas.map(encodeURIComponent).join("%7C") : "") + "&travelmode=driving");
-  }
-  [p].concat(cs).forEach(x => { if(x.obs){ L.push(""); L.push("*Obs " + (x.placa || "") + ":* " + x.obs); } });
-  L.push(""); L.push("📋 Enviar checklist de cada veículo imediatamente após a entrega.");
   return L.join("\n");
 }
 function montarOSSimples(v){
@@ -3630,6 +3593,7 @@ function montarOSSimples(v){
     L.push("");
     L.push("⏰ *Agendamento:* " + fmtData(v.data) + (v.hora ? " às " + fmtHora(v.hora) : ""));
   }
+  if(linhaJunto(v)){ L.push(""); L.push(linhaJunto(v)); }
   if(v.avarias){ L.push(""); L.push("*Avarias registradas:* " + v.avarias); }
   if(v.obs){ L.push(""); L.push("*Obs:* " + v.obs); }
   L.push("");
