@@ -2143,6 +2143,23 @@ body.imprimindo .c-fotos{display:none}
 .lj-lista li .lj-abre small{display:block;color:var(--rotulo-3);font-size:.6875rem;margin-top:.125rem}
 .lj-lista li .lj-tira{flex-shrink:0;background:none;border:0;color:var(--rotulo-3);cursor:pointer;font-size:.875rem;padding:.25rem}
 html[data-papel="leitura"] .lj-tira,html[data-papel="leitura"] .lj-add{display:none}
+/* motorista da saída: escolha rápida ao pôr em rota */
+.mot-dlg{border:0;border-radius:var(--raio);padding:1.25rem;max-width:min(24rem,calc(100vw - 2rem));width:100%;
+  background:var(--superficie);color:var(--rotulo);box-shadow:var(--sombra-g)}
+.mot-dlg::backdrop{background:rgba(0,0,0,.35)}
+.mot-dlg h2{margin:0 0 .25rem;font-size:1rem;font-weight:560}
+.mot-dlg p{margin:0 0 .875rem;font-size:.8125rem;color:var(--rotulo-3)}
+.mot-lista{display:flex;flex-wrap:wrap;gap:.375rem;margin-bottom:.75rem}
+.mot-op{border:1px solid var(--separador);background:var(--fundo);color:var(--rotulo);border-radius:var(--pilula);
+  padding:.5rem .875rem;font:inherit;font-size:.875rem;cursor:pointer}
+.mot-op[aria-pressed="true"]{background:var(--rotulo);color:var(--fundo);border-color:var(--rotulo)}
+.mot-op:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+.mot-dlg .acoes{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.875rem}
+.c-motorista{display:flex;align-items:center;gap:.375rem;margin-top:.375rem;font-size:.75rem;font-weight:480;color:var(--rotulo)}
+.c-motorista svg{width:.9375rem;height:.9375rem;flex-shrink:0;color:var(--rotulo-3)}
+.mot-ficha{display:flex;align-items:center;gap:.5rem;margin-top:.625rem;font-size:.875rem}
+.mot-ficha button{margin-left:auto}
+html[data-papel="leitura"] #p-motorista{display:none}
 </style>
 </head>
 <body>
@@ -2220,7 +2237,7 @@ html[data-papel="leitura"] .lj-tira,html[data-papel="leitura"] .lj-add{display:n
       <p class="sub" id="form-sub">Só a placa é obrigatória. O resto pode ser completado depois, quando chegar a ordem de serviço.</p>
       <div class="tipo-reg" role="group" aria-label="Tipo de registro">
         <button type="button" class="tipo-op" data-tipo="patio" aria-pressed="true">Entrada no pátio</button>
-        <button type="button" class="tipo-op" data-tipo="direta" aria-pressed="false">Coleta direta</button>
+        <button type="button" class="tipo-op" data-tipo="direta" aria-pressed="false">Fora de base</button>
       </div>
       <input type="checkbox" id="f-direta" hidden>
 
@@ -3431,6 +3448,79 @@ document.addEventListener("paste", e => {
 });
 
 /* =========================================================
+   MOTORISTA DA SAÍDA
+   Ao pôr em rota, pergunta quem está levando. A lista vem do
+   cadastro de motoristas do Abastecimento — o mesmo nome nos
+   dois apps. "guincheiro" continua sendo quem trouxe.
+   ========================================================= */
+let listaMotoristas = null;
+async function motoristasAtivos(){
+  if(listaMotoristas) return listaMotoristas;
+  try{
+    listaMotoristas = ((await api("motoristas?select=nome,ativo,ordem&ativo=eq.true&order=ordem.asc,nome.asc")) || [])
+      .map(m => m.nome).filter(Boolean);
+  }catch(e){ listaMotoristas = []; }
+  return listaMotoristas;
+}
+let dlgMot = null;
+/* devolve o nome escolhido, "" para seguir sem informar, ou null se desistiu */
+function escolherMotorista(v, atual){
+  return new Promise(async resolve => {
+    if(!dlgMot){
+      dlgMot = document.createElement("dialog");
+      dlgMot.className = "mot-dlg";
+      dlgMot.setAttribute("aria-labelledby", "mot-tit");
+      document.body.appendChild(dlgMot);
+    }
+    const nomes = await motoristasAtivos();
+    const junto = coletasDe(v);
+    dlgMot.innerHTML =
+      '<h2 id="mot-tit">Quem está levando?</h2>'+
+      '<p>'+esc(nomeCurto(v))+(junto.length ? ' e '+junto.map(x => esc(x.placa || x.modelo || "")).join(", ")+' (fora de base)' : '')+'</p>'+
+      '<div class="mot-lista">'+nomes.map(n =>
+        '<button type="button" class="mot-op" data-nome="'+esc(n)+'" aria-pressed="'+(n === atual)+'">'+esc(n)+'</button>').join("")+'</div>'+
+      '<div class="campo largo"><label for="mot-outro">Outro motorista</label>'+
+        '<input id="mot-outro" type="text" placeholder="Nome" value="'+esc(atual && !nomes.includes(atual) ? atual : "")+'"></div>'+
+      '<div class="acoes"><button type="button" class="btn btn-s" id="mot-cancelar">Cancelar</button>'+
+        '<button type="button" class="btn btn-s" id="mot-pular">Sem informar</button>'+
+        '<button type="button" class="btn btn-p" id="mot-ok">Pôr em rota</button></div>';
+    let escolhido = atual || "";
+    let feito = false;
+    const fim = val => { if(feito) return; feito = true; dlgMot.close(); resolve(val); };
+    dlgMot.querySelectorAll(".mot-op").forEach(b => b.onclick = () => {
+      escolhido = b.dataset.nome; $("#mot-outro").value = "";
+      dlgMot.querySelectorAll(".mot-op").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      fim(escolhido);                       /* um toque no nome já confirma */
+    });
+    $("#mot-outro").oninput = e => {
+      escolhido = e.target.value.trim();
+      dlgMot.querySelectorAll(".mot-op").forEach(x => x.setAttribute("aria-pressed", "false"));
+    };
+    $("#mot-outro").onkeydown = e => { if(e.key === "Enter"){ e.preventDefault(); fim(e.target.value.trim() || escolhido); } };
+    $("#mot-ok").onclick = () => fim(($("#mot-outro").value.trim()) || escolhido);
+    $("#mot-pular").onclick = () => fim("");
+    $("#mot-cancelar").onclick = () => fim(null);
+    dlgMot.onclose = () => fim(null);
+    dlgMot.showModal();
+  });
+}
+/* põe em rota: o veículo e os agendamentos fora de base que seguem com ele */
+async function porEmRota(v, motorista, comEvento, obsExtra){
+  const campos = { status: "Em rota" };
+  if(motorista) campos.motorista = motorista;
+  Object.assign(v, await atualizarVeiculo(v.id, campos));
+  if(comEvento){
+    dados.eventos.unshift(await inserirEvento({ veiculo: v.id, quando: new Date().toISOString(),
+      tipo: "Saída para entrega", resultado: "", motivo: "",
+      obs: [obsExtra, motorista ? "Motorista: " + motorista : ""].filter(Boolean).join(" — ") }));
+  }
+  for(const c of coletasDe(v)){
+    if(c.status === "Em rota" && c.motorista === motorista) continue;
+    Object.assign(c, await atualizarVeiculo(c.id, campos));
+  }
+}
+
+/* =========================================================
    ORDEM DE SERVIÇO
    Monta a mensagem a partir da ficha, no formato que a
    equipe já usa no WhatsApp.
@@ -3463,7 +3553,7 @@ function linkDoDestino(v){
   return ponto ? mapa(ponto.lat + "," + ponto.lon) : mapa(endCompleto(v));
 }
 function montarOSColeta(v){
-  const L = ["*COLETA DIRETA*", ""];
+  const L = ["*AGENDAMENTO FORA DE BASE*", ""];
   linhasVeiculo(L, v);
   if(v.origem){ L.push(""); L.push("📍 *Coletar em:* " + v.origem); L.push(mapa(v.origem)); }
   if(v.destino){ L.push(""); L.push("📍 *Entregar em:* " + endCompleto(v)); L.push(linkDoDestino(v)); }
@@ -3474,7 +3564,7 @@ function montarOSColeta(v){
 }
 function montarOSViagem(p){
   const cs = coletasDe(p);
-  const L = ["*SAÍDA DE BASE + " + (cs.length > 1 ? cs.length + " COLETAS" : "COLETA") + "*", ""];
+  const L = ["*SAÍDA DE BASE + " + cs.length + " FORA DE BASE*", ""];
   let n = 1;
   const passo = (t) => L.push("*" + (n++) + ")* " + t);
   const base = ENDERECO_BASE + ", Santos/SP";
@@ -3491,7 +3581,7 @@ function montarOSViagem(p){
   });
   cs.forEach(c => {
     L.push("");
-    passo("*Entregar " + (c.modelo || c.placa || "coleta") + "* — " + (endCompleto(c) || "destino a confirmar"));
+    passo("*Entregar " + (c.modelo || c.placa || "veículo") + "* — " + (endCompleto(c) || "destino a confirmar"));
     if(c.destino) L.push(linkDoDestino(c));
   });
   L.push("");
@@ -3691,6 +3781,10 @@ const ICONE_NOTA =
 /* Arame desenhado em dois traços, um escuro por baixo e um claro por
    cima: dá o brilho de metal sem gradiente — gradiente precisa de id,
    e id repetido em cinquenta cartões é pedir para o navegador se perder. */
+const ICONE_CAMINHAO =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+    '<path d="M3 16V7a1 1 0 0 1 1-1h10v10"/><path d="M14 10h4l3 3v3h-2"/><path d="M9 16h6"/>'+
+    '<circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>';
 const CLIPE =
   '<span class="clipe" aria-hidden="true"><svg viewBox="0 0 12 28" fill="none" stroke-linecap="round">'+
     '<path d="M4 20V6.5a2.5 2.5 0 0 1 5 0V22a3.5 3.5 0 0 1-7 0V9" stroke="#6E747C" stroke-width="2.2"/>'+
@@ -3955,7 +4049,7 @@ function exportarDetalhado(){
   const linhas = [["Placa","Modelo","Ano","Cor","Seguradora","Central","Nº assistência",
     "Condição","Perda total","Rodas/câmbio travado","Avarias","Guincheiro",
     "Status","Entrada na base","Dias na base","Destino","Ponto exato","Cidade","Data agendada","Hora",
-    "Saída realizada","Tentativas sem sucesso","Fotos","Checklist","Observações","Nota","Coleta direta","Origem","Vai junto com","Histórico"]];
+    "Saída realizada","Tentativas sem sucesso","Fotos","Checklist","Observações","Nota","Fora de base","Origem","Vai junto com","Motorista da saída","Histórico"]];
   l.forEach(v => {
     const m = marcaSeguradora(v.seguradora);
     const c = m.central && CENTRAIS[m.central];
@@ -3971,7 +4065,7 @@ function exportarDetalhado(){
       v.destino, v.ponto, v.cidade, fmtData(v.data), fmtHora(v.hora),
       v.saida ? fmtCarimbo(v.saida) : "", tentativas(v), lerFotos(v).length,
       sim(v.checklist), v.obs, v.nota || "", sim(v.direta), v.origem || "",
-      ((v.junto && dados.veiculos.find(x => x.id === v.junto)) || {}).placa || "", hist ]);
+      ((v.junto && dados.veiculos.find(x => x.id === v.junto)) || {}).placa || "", v.motorista || "", hist ]);
   });
   baixarCSV("patio-prumo-detalhado_" + carimboArquivo() + ".csv", linhas);
   recado(l.length + (l.length > 1 ? " veículos exportados" : " veículo exportado"));
@@ -3994,7 +4088,7 @@ function pintarIndicadores(){
     '<div class="ind i-hoje"><b>'+hoje+'</b><span>saem hoje</span></div>'+
     '<div class="ind i-acao"><b>'+acao+'</b><span>requer ação</span></div>'+
     '<div class="ind i-pt"><b>'+pt+'</b><span>perda total</span></div>'+
-    (coletas ? '<div class="ind"><b>'+coletas+'</b><span>'+(coletas>1?"coletas diretas":"coleta direta")+'</span></div>' : '');
+    (coletas ? '<div class="ind"><b>'+coletas+'</b><span>fora de base</span></div>' : '');
   $("#n-patio").textContent = dados.veiculos.filter(v => !arquivado(v)).length;
   $("#n-agenda").textContent = dados.veiculos.filter(v => v.data && v.status !== "Entregue").length;
 }
@@ -4109,7 +4203,7 @@ function filtrados(){
   if(termo){
     const t = semAcento(termo);
     const tPlaca = t.replace(/[^a-z0-9]/g, "");
-    l = l.filter(v => [v.placa,v.modelo,v.seguradora,v.destino,v.cidade,v.assistencia,v.nota,v.origem]
+    l = l.filter(v => [v.placa,v.modelo,v.seguradora,v.destino,v.cidade,v.assistencia,v.nota,v.origem,v.motorista]
       .some(c => semAcento(c).includes(t)) ||
       (tPlaca.length >= 3 && semAcento(v.placa).replace(/[^a-z0-9]/g, "").includes(tPlaca)));
   }
@@ -4146,7 +4240,7 @@ function cartao(v){
   /* na coleta direta não existe "dias na base": o que importa é a hora */
   const quando = direta
     ? '<div class="c-dias c-quando"><b>'+(v.hora ? fmtHora(v.hora) : v.data ? fmtData(v.data).slice(0,5) : "—")+'</b>'+
-      '<span>'+(v.data ? (v.hora ? fmtData(v.data).slice(0,5) + " · coleta" : "coleta") : "sem data")+'</span></div>'
+      '<span>'+(v.data ? (v.hora ? fmtData(v.data).slice(0,5) + " · fora de base" : "fora de base") : "sem data")+'</span></div>'
     : '<div class="c-dias"><b class="'+classeDias(v,d)+'">'+fmtDias(d)+'</b><span>'+(d===1?"dia":"dias")+' na base</span></div>';
   /* vínculo de viagem, nos dois sentidos; tocar abre o outro */
   const par = direta ? (v.junto && dados.veiculos.find(x => x.id === v.junto)) : null;
@@ -4183,6 +4277,7 @@ function cartao(v){
     cabeca+ (nota && compacto ? notaHTML(v, "solta") : '')+
     '<div class="c-modelo">'+esc(v.modelo||"Modelo não informado")+
       (nf?'<span class="marca-foto">▣ '+nf+'</span>':'')+'</div>'+
+    (v.status === "Em rota" && v.motorista ? '<div class="c-motorista">'+ICONE_CAMINHAO+'<span>Em rota com '+esc(v.motorista)+'</span></div>' : '')+
     elo+
     tira+
     marca+
@@ -4296,7 +4391,7 @@ function pintarPatio(){
   const faixaColetas = !coletas.length ? '' :
     '<div class="grupo g-coletas'+(fechadoC?" fechado":"")+'" data-status="__coletas"><div class="grupo-cab">'+
       '<button class="cab-toque" data-fechar="__coletas" aria-expanded="'+(!fechadoC)+'">'+
-        '<h2>Coletas diretas</h2><span class="qt">'+coletas.length+'</span>'+
+        '<h2>Agendamentos fora de base</h2><span class="qt">'+coletas.length+'</span>'+
         '<svg class="seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'+
       '</button></div>'+
       '<div class="grade'+(primeiraPintura?" entrando":"")+'">'+coletas.map(cartao).join("")+'</div></div>';
@@ -4600,8 +4695,8 @@ function pintarAgenda(){
         '<button class="evento" data-id="'+v.id+'">'+
           '<span class="ev-hora mono">'+(fmtHora(v.hora)||"—")+'</span>'+ placaHTML(v.placa,true)+
           '<span class="ev-corpo"><span class="m">'+esc(v.modelo||"—")+
-            (v.direta ? '<span class="ev-tag">coleta direta</span>' : '')+
-            (!v.direta && coletasDe(v).length ? '<span class="ev-tag">+'+coletasDe(v).length+' coleta</span>' : '')+'</span>'+
+            (v.direta ? '<span class="ev-tag">fora de base</span>' : '')+
+            (!v.direta && coletasDe(v).length ? '<span class="ev-tag">+'+coletasDe(v).length+' fora de base</span>' : '')+'</span>'+
           '<span class="s">'+(v.direta ? esc(v.origem||"origem a definir")+" → " : "")+
             esc(v.destino||"destino a definir")+(v.cidade?" · "+esc(v.cidade):"")+'</span></span>'+
         '</button>').join("")+'</div>';
@@ -4860,11 +4955,11 @@ function blocoJunto(v){
       '<li><button type="button" class="lj-abre" data-abre="'+x.id+'">'+esc(nomeCurto(x))+
         '<small>'+esc((x.origem||"origem a definir")+" → "+(x.destino ? destinoLegivel(x.destino) : "destino a definir"))+'</small></button>'+
       '<button type="button" class="lj-tira" data-tira-junto="'+x.id+'" title="Tirar desta viagem" aria-label="Tirar '+esc(x.placa||"coleta")+' desta viagem">✕</button></li>').join("")+'</ul>'
-      : '<p style="color:var(--rotulo-3);font-size:.8125rem;margin:.25rem 0 .625rem">Nenhuma coleta direta segue com este veículo.</p>')+
+      : '<p style="color:var(--rotulo-3);font-size:.8125rem;margin:.25rem 0 .625rem">Nenhum agendamento fora de base segue com este veículo.</p>')+
     '<div class="acoes lj-add">'+
-      (soltas.length ? '<select id="lj-escolhe" aria-label="Juntar uma coleta já registrada"><option value="">Juntar coleta já registrada…</option>'+
+      (soltas.length ? '<select id="lj-escolhe" aria-label="Juntar um agendamento já registrado"><option value="">Juntar agendamento já registrado…</option>'+
         soltas.map(x => '<option value="'+x.id+'">'+esc(nomeCurto(x))+'</option>').join("")+'</select>' : '')+
-      '<button type="button" class="btn btn-s" id="lj-nova">Nova coleta direta</button></div></div>';
+      '<button type="button" class="btn btn-s" id="lj-nova">Novo agendamento fora de base</button></div></div>';
 }
 function conteudoPainel(v){
   const hist = dados.eventos.filter(e => e.veiculo === v.id).sort((a,b) => b.quando.localeCompare(a.quando));
@@ -4875,7 +4970,7 @@ function conteudoPainel(v){
     '<div class="p-topo"><div>'+placaHTML(v.placa)+
       '<div style="margin-top:.5rem;font-weight:600;letter-spacing:-.01em">'+esc(v.modelo||"Modelo não informado")+'</div>'+
       '<div class="seg-linha">'+seloSeg(v.seguradora)+
-        (v.direta ? '<span class="nome">Coleta direta · não passa pela base</span>'
+        (v.direta ? '<span class="nome">Agendamento fora de base</span>'
           : '<span class="nome '+classeDias(v,d)+'">'+fmtDias(d)+(d===1?' dia':' dias')+' na base</span>')+'</div></div>'+
       /* Subiram para a linha do ✕: como ícones não precisam de faixa
          própria, e a ficha ganha de volta a altura que ela ocupava.
@@ -4896,6 +4991,9 @@ function conteudoPainel(v){
       (temNota(v) ? notaHTML(v, "nota-ficha") : '')+
       '<div class="bloco"><h3>Situação</h3><div class="campo">'+
         '<select id="p-status">'+STATUS.map(s => '<option'+(s===v.status?' selected':'')+'>'+s+'</option>').join("")+'</select>'+
+        (v.status === "Em rota" ? '<div class="mot-ficha">'+ICONE_CAMINHAO+'<span>'+
+          (v.motorista ? 'Levando: <b>'+esc(v.motorista)+'</b>' : 'Motorista não informado')+'</span>'+
+          '<button type="button" class="btn btn-s" id="p-motorista">'+(v.motorista ? 'Trocar' : 'Informar')+'</button></div>' : '')+
       '</div></div>'+
       '<div class="bloco"><h3>Chamado</h3><dl class="dl">'+
         li("Seguradora",v.seguradora)+
@@ -4977,7 +5075,7 @@ function conteudoPainel(v){
 const ROTULO_CAMPO = { placa:"placa", modelo:"modelo", ano:"ano", cor:"cor", seguradora:"seguradora",
   assistencia:"nº da assistência", condicao:"condição", guincheiro:"guincheiro", pt:"perda total",
   travado:"travado", avarias:"avarias", status:"situação", destino:"destino", cidade:"cidade",
-  data:"data de saída", hora:"hora", obs:"observações", nota:"nota", entrada:"entrada", saida:"saída",
+  data:"data de saída", hora:"hora", obs:"observações", nota:"nota", motorista:"motorista da saída", origem:"origem", direta:"fora de base", junto:"vai junto com", entrada:"entrada", saida:"saída",
   arquivado:"arquivado", tipo:"tipo do evento", quando:"quando", resultado:"resultado", motivo:"motivo" };
 function valorLegivel(campo, v){
   if(v === null || v === "") return "vazio";
@@ -5115,12 +5213,27 @@ function ligarPainel(v){
     return;
   }
   $("#p-status").onchange = async e => {
+    if(e.target.value === "Em rota" && v.status !== "Em rota"){
+      const m = await escolherMotorista(v, v.motorista);
+      if(m === null){ e.target.value = v.status; return; }      /* desistiu: volta como estava */
+      try{ await porEmRota(v, m, true); pintar(); repintarPainel(v);
+        recado("Em rota" + (m ? " com " + m : "") + (coletasDe(v).length ? " — fora de base junto" : "")); }
+      catch(err){ e.target.value = v.status; recado("Não salvou: " + err.message); }
+      return;
+    }
     const campos = { status: e.target.value };
     if(campos.status === "Entregue" && !v.saida) campos.saida = new Date().toISOString();
     try{ Object.assign(v, await atualizarVeiculo(v.id, campos)); pintar(); recado("Status atualizado"); }
     catch(err){ recado("Não salvou: " + err.message); }
   };
   $("#e-tipo").onchange = e => $("#env-motivo").classList.toggle("oculto", e.target.value !== "Tentativa de entrega");
+  const pm = $("#p-motorista");
+  if(pm) pm.onclick = async () => {
+    const m = await escolherMotorista(v, v.motorista);
+    if(m === null || m === (v.motorista || "")) return;
+    try{ await porEmRota(v, m, false); pintar(); repintarPainel(v); recado(m ? "Levando: " + m : "Motorista retirado"); }
+    catch(err){ recado("Não salvou: " + err.message); }
+  };
   /* saída editável na própria ficha: grava ao sair do campo */
   const salvarSaida = async () => {
     const campos = {
@@ -5189,6 +5302,17 @@ function ligarPainel(v){
       resultado: tipo === "Tentativa de entrega" ? "Falha" : (tipo === "Entrega concluída" ? "Sucesso" : ""),
       motivo: tipo === "Tentativa de entrega" ? $("#e-motivo").value : "",
       obs: $("#e-obs").value.trim() };
+    if(tipo === "Saída para entrega"){
+      const m = await escolherMotorista(v, v.motorista);
+      if(m === null) return;
+      try{
+        await porEmRota(v, m, false);
+        if(m) ev.obs = [ev.obs, "Motorista: " + m].filter(Boolean).join(" — ");
+        dados.eventos.unshift(await inserirEvento(ev));
+        pintar(); repintarPainel(v); recado("Evento registrado" + (m ? " — em rota com " + m : ""));
+      }catch(err){ recado("Não salvou: " + err.message); }
+      return;
+    }
     const campos = {};
     if(tipo === "Entrega concluída"){ campos.status = "Entregue"; campos.saida = ev.quando; }
     else if(tipo === "Tentativa de entrega") campos.status = "Entrega rejeitada";
@@ -5460,7 +5584,7 @@ function pintarOpcoesJunto(atual, proprio){
   sel.innerHTML = '<option value="">Sozinha — não segue com ninguém do pátio</option>' + l.map(opcaoSaida).join("");
 }
 function textoBotaoSalvar(){
-  return editando ? "Salvar alterações" : $("#f-direta").checked ? "Registrar coleta" : "Registrar entrada";
+  return editando ? "Salvar alterações" : $("#f-direta").checked ? "Registrar agendamento" : "Registrar entrada";
 }
 function modoForm(tipo){
   const d = tipo === "direta";
@@ -5470,7 +5594,7 @@ function modoForm(tipo){
   const leg = $("#leg-saida");
   if(leg) leg.textContent = d ? "Entrega" : "Saída — preencha quando souber";
   if(!editando){
-    $("#form-titulo").textContent = d ? "Registrar coleta direta" : "Registrar entrada";
+    $("#form-titulo").textContent = d ? "Registrar agendamento fora de base" : "Registrar entrada";
     $("#form-sub").textContent = d
       ? "Atendimento que não passa pela base: coleta na origem e entrega no destino. Placa incompleta pode ir com asterisco (ABC1D**)."
       : "Só a placa é obrigatória. O resto pode ser completado depois, quando chegar a ordem de serviço.";
@@ -5610,7 +5734,7 @@ async function salvarEntrada(){
       const junto = campos.direta && campos.junto && dados.veiculos.find(x => x.id === campos.junto);
       limparRascunho(); limpar(); pintar(); trocarAba("patio");
       recado(campos.direta
-        ? campos.placa + " registrada como coleta direta" + (junto ? " — segue com " + (junto.placa || "o veículo") : "")
+        ? campos.placa + " agendado fora de base" + (junto ? " — segue com " + (junto.placa || "o veículo") : "")
         : campos.placa + " registrado no pátio");
     }
   }catch(err){ recado("Não salvou: " + err.message); }
@@ -7026,7 +7150,7 @@ function balaoDe(v, km){
   return '<div class="balao"><b>' + esc(v.modelo || "Modelo não informado") + '</b>' +
     esc(v.seguradora || "") + (v.destino ? '<br>' + esc(destinoLegivel(v.destino)) : '') +
     (v.cidade ? '<br>' + esc(v.cidade) : '') +
-    '<br>' + v.status + ' · ' + (v.direta ? 'coleta direta' : d + (d === 1 ? ' dia' : ' dias') + ' na base') +
+    '<br>' + v.status + ' · ' + (v.direta ? 'fora de base' : d + (d === 1 ? ' dia' : ' dias') + ' na base') +
     (km != null ? ' · ' + km + ' km da base' : '') +
     (aprox ? '<br><span class="alerta-aprox">Posição aproximada' +
       (soLeitura ? '' : ' — arraste o pino para o lugar certo') + '</span>' : '') +
@@ -7581,6 +7705,7 @@ document.addEventListener("keydown", e => {
   /* a nota é um <dialog>: o próprio navegador fecha com Esc. Aqui só
      não se deixa o mesmo Esc derrubar a ficha que está atrás dela. */
   if(dlgNota && dlgNota.open) return;
+  if(dlgMot && dlgMot.open) return;
   if(visorAberto()){
     if(e.key === "Escape"){ e.preventDefault(); fecharVisor(); }
     else if(e.key === "ArrowLeft"){ e.preventDefault(); andarVisor(-1); }
