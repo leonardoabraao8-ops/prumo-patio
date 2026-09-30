@@ -3628,7 +3628,8 @@ function confirmarEntrega(v){
     $("#ent-nome").focus();
   });
 }
-const obsEntrega = r => "Recebido por " + r.recebedor + (r.local ? " — em outro endereço: " + r.local : " — no endereço da ficha");
+const obsEntrega = (r, v) => [v && v.motorista ? "Entregue por " + v.motorista : "",
+  "Recebido por " + r.recebedor, r.local ? "em outro endereço: " + r.local : "no endereço da ficha"].filter(Boolean).join(" — ");
 
 /* põe em rota: o veículo e os agendamentos fora de base que seguem com ele */
 async function porEmRota(v, motorista, comEvento, obsExtra){
@@ -5273,7 +5274,7 @@ function conteudoPainel(v){
         (v.status === "Em rota" ? '<div class="mot-ficha">'+ICONE_CAMINHAO+'<span>'+
           (v.motorista ? 'Levando: <b>'+esc(v.motorista)+'</b>' : 'Motorista não informado')+'</span>'+
           '<button type="button" class="btn btn-s" id="p-motorista">'+(v.motorista ? 'Trocar' : 'Informar')+'</button></div>' : '')+
-        (v.status === "Entregue" && v.recebedor ? '<div class="mot-ficha"><span>Recebido por <b>'+esc(v.recebedor)+'</b>'+
+        (v.status === "Entregue" && v.recebedor ? '<div class="mot-ficha"><span>'+(v.motorista ? 'Entregue por <b>'+esc(v.motorista)+'</b> · r' : 'R')+'ecebido por <b>'+esc(v.recebedor)+'</b>'+
           (v.entrega_local ? ' em outro endereço: '+esc(v.entrega_local) : ' no endereço da ficha')+'</span></div>' : '')+
       '</div></div>'+
       '<div class="bloco"><h3>Chamado</h3><dl class="dl">'+
@@ -5510,7 +5511,7 @@ function ligarPainel(v){
         Object.assign(v, await atualizarVeiculo(v.id, { status: "Entregue", saida: agora,
           recebedor: r.recebedor, entrega_local: r.local || null }));
         dados.eventos.unshift(await inserirEvento({ veiculo: v.id, quando: agora, tipo: "Entrega concluída",
-          resultado: "Sucesso", motivo: "", obs: obsEntrega(r) }));
+          resultado: "Sucesso", motivo: "", obs: obsEntrega(r, v) }));
         pintar(); repintarPainel(v); recado("Entregue — recebido por " + r.recebedor);
       }catch(err){ e.target.value = v.status; recado("Não salvou: " + err.message); }
       return;
@@ -5612,7 +5613,7 @@ function ligarPainel(v){
       if(!r) return;
       campos.status = "Entregue"; campos.saida = ev.quando;
       campos.recebedor = r.recebedor; campos.entrega_local = r.local || null;
-      ev.obs = [ev.obs, obsEntrega(r)].filter(Boolean).join(" — ");
+      ev.obs = [ev.obs, obsEntrega(r, v)].filter(Boolean).join(" — ");
     }
     else if(tipo === "Tentativa de entrega") campos.status = "Entrega rejeitada";
     else if(tipo === "Saída para entrega") campos.status = "Em rota";
