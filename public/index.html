@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#FFFFFF">
+<link rel="manifest" href="manifest.webmanifest">
 <title>Pátio Prumo</title>
 <script>
 /* Roda antes de qualquer pixel: sem isto a página pisca branca
@@ -2166,6 +2167,8 @@ html[data-papel="leitura"] #p-motorista{display:none}
   0%,35%{box-shadow:0 0 0 3px var(--azul),0 10px 28px -10px rgba(0,0,0,.35);transform:scale(1.015)}
   100%{box-shadow:0 0 0 0 transparent;transform:scale(1)}}
 @media (prefers-reduced-motion:reduce){.cartao.destaque{animation:none;outline:3px solid var(--azul);outline-offset:2px}}
+html[data-papel="leitura"] #bloco-avisos{display:none}
+#avisos-estado:empty{display:none}
 </style>
 </head>
 <body>
@@ -2449,6 +2452,19 @@ html[data-papel="leitura"] #p-motorista{display:none}
           <span class="amostra esboco a-compacto"><i class="b-placa"></i><i class="b-logo1"></i><i class="b-logo2"></i><i class="b-dias"></i></span>
           <span class="nome">Logos menores</span>
           <span class="desc">Tudo na linha da placa. Cabe mais veículo na tela.</span></button>
+      </div>
+
+      <div id="bloco-avisos">
+      <h3 class="grupo-conf">Avisos de agendamento</h3>
+      <p class="dica-conf">Notificação neste aparelho 30, 15 e 5 minutos antes de cada saída de base ou
+        agendamento fora de base com hora marcada — mesmo com o Pátio fechado. Vale para quem é editor.
+        Ative em cada celular ou computador que deve tocar.</p>
+      <p class="dica-conf" id="avisos-estado"></p>
+      <div class="acoes">
+        <button class="btn btn-p" id="avisos-ligar">Ativar neste aparelho</button>
+        <button class="btn btn-s oculto" id="avisos-teste">Enviar teste</button>
+        <button class="btn btn-s oculto" id="avisos-desligar">Desativar neste aparelho</button>
+      </div>
       </div>
 
       <h3 class="grupo-conf">Fotos no cartão</h3>
@@ -3525,6 +3541,110 @@ async function porEmRota(v, motorista, comEvento, obsExtra){
     if(c.status === "Em rota" && c.motorista === motorista) continue;
     Object.assign(c, await atualizarVeiculo(c.id, campos));
   }
+}
+
+/* =========================================================
+   AVISOS DE AGENDAMENTO
+   Web Push: o banco confere a cada minuto o que está a 30, 15
+   ou 5 minutos de sair e manda o aviso aos aparelhos inscritos
+   (função avisos-push no Supabase). Aqui só se inscreve ou sai.
+   O sw.js ao lado do index.html é o que mostra a notificação.
+   ========================================================= */
+const VAPID_PUBLICA = "BAl5-57mZ21AjLeqvrTB3T69Ubx4fwqkY5ycrXK_msfdjPgtOyToJswQBPAFUEsmDUZ6MR-BUG2m_C3iIjApKSE";
+const URL_AVISOS = SUPABASE_URL + "/functions/v1/avisos-push";
+const suportaPush = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const noIphoneSemInstalar = () => /iphone|ipad|ipod/i.test(navigator.userAgent) &&
+  !(window.navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches));
+function bytesDaChave(b){
+  const s = atob((b + "=".repeat((4 - b.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(s, c => c.charCodeAt(0));
+}
+function nomeDoAparelho(){
+  const ua = navigator.userAgent;
+  const so = /android/i.test(ua) ? "Android" : /iphone|ipad/i.test(ua) ? "iPhone" : /windows/i.test(ua) ? "Windows" : /mac/i.test(ua) ? "Mac" : "Outro";
+  const nav = /edg\//i.test(ua) ? "Edge" : /chrome|crios/i.test(ua) ? "Chrome" : /firefox|fxios/i.test(ua) ? "Firefox" : /safari/i.test(ua) ? "Safari" : "";
+  return so + (nav ? " · " + nav : "");
+}
+async function inscricaoAtual(){
+  if(!suportaPush() || location.protocol === "file:") return null;
+  const reg = await navigator.serviceWorker.getRegistration();
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+async function pintarAvisos(){
+  const est = $("#avisos-estado"), ligar = $("#avisos-ligar"), teste = $("#avisos-teste"), desligar = $("#avisos-desligar");
+  if(!est) return;
+  let msg = "", ativo = false, pode = true;
+  if(location.protocol === "file:"){ msg = "Abra pelo endereço do site (patio.alfaprumo.workers.dev) para ativar — o arquivo aberto do computador não recebe avisos."; pode = false; }
+  else if(noIphoneSemInstalar()){ msg = "No iPhone: toque em Compartilhar → Adicionar à Tela de Início, abra o Pátio pelo ícone e ative aqui."; pode = false; }
+  else if(!suportaPush()){ msg = "Este navegador não recebe avisos. No celular use o Chrome (Android) ou o Pátio instalado na tela de início (iPhone)."; pode = false; }
+  else if(Notification.permission === "denied"){ msg = "As notificações estão bloqueadas para este site. Libere nas configurações do navegador e volte aqui."; pode = false; }
+  else{
+    try{ ativo = !!(await inscricaoAtual()); }catch(e){}
+    msg = ativo ? "Ativo neste aparelho." : "";
+  }
+  est.textContent = msg;
+  ligar.classList.toggle("oculto", ativo || !pode);
+  teste.classList.toggle("oculto", !ativo);
+  desligar.classList.toggle("oculto", !ativo);
+}
+async function ativarAvisos(){
+  const b = $("#avisos-ligar");
+  b.disabled = true;
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm !== "granted"){ recado("Sem permissão para notificar neste aparelho"); return; }
+    const reg = await navigator.serviceWorker.register("sw.js");
+    await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription() ||
+      await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytesDaChave(VAPID_PUBLICA) });
+    const j = sub.toJSON();
+    await api("push_inscricoes?on_conflict=endpoint", { method: "POST",
+      headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, aparelho: nomeDoAparelho() }) });
+    recado("Avisos ativados neste aparelho");
+    testarAvisos(true);
+  }catch(err){ recado("Não ativou: " + err.message); }
+  finally{ b.disabled = false; pintarAvisos(); }
+}
+async function desativarAvisos(){
+  try{
+    const sub = await inscricaoAtual();
+    if(sub){
+      await api("push_inscricoes?endpoint=eq." + encodeURIComponent(sub.endpoint), { method: "DELETE" });
+      await sub.unsubscribe();
+    }
+    recado("Avisos desativados neste aparelho");
+  }catch(err){ recado("Não desativou: " + err.message); }
+  pintarAvisos();
+}
+async function testarAvisos(calado){
+  try{
+    const sub = await inscricaoAtual();
+    if(!sub) return;
+    const r = await fetch(URL_AVISOS, { method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": SUPABASE_KEY },
+      body: JSON.stringify({ teste: sub.endpoint }) });
+    if(!calado) recado(r.ok ? "Aviso de teste enviado — deve chegar em segundos" : "O teste não saiu (" + r.status + ")");
+  }catch(err){ if(!calado) recado("O teste não saiu: " + err.message); }
+}
+if($("#avisos-ligar")){
+  $("#avisos-ligar").onclick = ativarAvisos;
+  $("#avisos-desligar").onclick = desativarAvisos;
+  $("#avisos-teste").onclick = () => testarAvisos(false);
+}
+/* tocar no aviso com o Pátio já aberto: o sw.js manda abrir a ficha */
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.addEventListener("message", e => {
+    const id = e.data && e.data.abrir;
+    if(id && dados.veiculos.some(v => v.id === id)){ trocarAba("patio"); abrir(id); }
+  });
+}
+/* aberto a partir do aviso (?v=id): vai direto à ficha e limpa o endereço */
+function abrirPeloEndereco(){
+  const id = new URLSearchParams(location.search).get("v");
+  if(!id) return;
+  history.replaceState(null, "", location.pathname);
+  if(dados.veiculos.some(v => v.id === id)){ trocarAba("patio"); abrir(id); }
 }
 
 /* =========================================================
@@ -7863,6 +7983,7 @@ async function iniciarApp(){
   pintarChaveDoMapa();
   await carregarPreferencias();
   pintar();
+  pintarAvisos();
   /* volta o que estava sendo digitado e a aba em que a pessoa estava */
   const voltou = restaurarRascunho();
   const aba = recuperar(ABA_ATIVA);
@@ -7872,6 +7993,7 @@ async function iniciarApp(){
   }else if(aba && aba !== "patio"){
     trocarAba(aba);
   }
+  abrirPeloEndereco();
 }
 
 (async function(){
