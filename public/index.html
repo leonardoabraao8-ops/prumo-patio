@@ -2107,6 +2107,42 @@ body.imprimindo .c-fotos{display:none}
 .a-fc .b-linha.curta{width:45%;opacity:.4}
 .a-fc .b-tira{display:flex;gap:.1875rem}
 .a-fc .b-tira i{width:.875rem;height:.875rem;border-radius:2px;background:var(--rotulo-3);opacity:.45}
+/* ============================================================
+   COLETA DIRETA
+   Atendimento que não passa pela base: pega na origem, entrega
+   no destino. Mora na mesma tabela dos veículos (herda cartão,
+   ficha, fotos, histórico e ordem de serviço), mas não conta
+   como pátio. A faixa lateral tracejada diz isso de longe.
+   ============================================================ */
+.tipo-reg{display:inline-flex;gap:.25rem;padding:.25rem;margin:.25rem 0 1rem;border-radius:var(--pilula);
+  background:var(--suave);border:1px solid var(--separador)}
+.tipo-op{border:0;background:none;border-radius:var(--pilula);padding:.4375rem .9375rem;cursor:pointer;
+  font:inherit;font-size:.8125rem;font-weight:480;color:var(--rotulo-3)}
+.tipo-op[aria-pressed="true"]{background:var(--rotulo);color:var(--fundo)}
+.tipo-op:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+#form-entrada[data-tipo="patio"] .so-direta,
+#form-entrada[data-tipo="direta"] .so-patio{display:none}
+.cartao.direta::before{background:repeating-linear-gradient(180deg,var(--rotulo-3) 0 6px,transparent 6px 11px);opacity:.55}
+.c-quando b{font-size:1.375rem}
+.c-junto{display:flex;align-items:center;gap:.375rem;margin-top:.375rem;font-size:.75rem;color:var(--rotulo);
+  font-weight:420;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.c-junto svg{width:.875rem;height:.875rem;flex-shrink:0;color:var(--rotulo-3)}
+.c-junto:hover span{text-decoration:underline;text-underline-offset:2px}
+.c-junto:focus-visible{outline:2px solid var(--azul);outline-offset:2px;border-radius:4px}
+.c-rota b{font-weight:520}
+.c-rota .seta-rota{color:var(--rotulo-3);padding:0 .125rem}
+.g-coletas .grupo-cab h2::after{content:"não passam pela base";margin-left:.625rem;font-size:.6875rem;
+  font-weight:400;color:var(--rotulo-3);letter-spacing:0}
+.ev-tag{display:inline-block;margin-left:.375rem;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.5625rem;
+  text-transform:uppercase;letter-spacing:.05em;padding:.0625rem .375rem;border-radius:var(--pilula);
+  background:var(--suave);color:var(--rotulo-3);vertical-align:middle}
+.lj-lista{list-style:none;margin:.375rem 0 .625rem;padding:0;display:flex;flex-direction:column;gap:.375rem}
+.lj-lista li{display:flex;align-items:center;gap:.5rem;font-size:.8125rem;padding:.5rem .625rem;
+  border:1px solid var(--separador);border-radius:var(--raio-s);background:var(--fundo)}
+.lj-lista li .lj-abre{flex:1;min-width:0;background:none;border:0;padding:0;font:inherit;text-align:left;cursor:pointer;color:var(--rotulo)}
+.lj-lista li .lj-abre small{display:block;color:var(--rotulo-3);font-size:.6875rem;margin-top:.125rem}
+.lj-lista li .lj-tira{flex-shrink:0;background:none;border:0;color:var(--rotulo-3);cursor:pointer;font-size:.875rem;padding:.25rem}
+html[data-papel="leitura"] .lj-tira,html[data-papel="leitura"] .lj-add{display:none}
 </style>
 </head>
 <body>
@@ -2182,6 +2218,11 @@ body.imprimindo .c-fotos{display:none}
     <div class="folha" id="form-entrada">
       <h2 id="form-titulo">Registrar entrada</h2>
       <p class="sub" id="form-sub">Só a placa é obrigatória. O resto pode ser completado depois, quando chegar a ordem de serviço.</p>
+      <div class="tipo-reg" role="group" aria-label="Tipo de registro">
+        <button type="button" class="tipo-op" data-tipo="patio" aria-pressed="true">Entrada no pátio</button>
+        <button type="button" class="tipo-op" data-tipo="direta" aria-pressed="false">Coleta direta</button>
+      </div>
+      <input type="checkbox" id="f-direta" hidden>
 
       <fieldset>
         <legend>Colar chamado</legend>
@@ -2205,7 +2246,7 @@ body.imprimindo .c-fotos{display:none}
             <input id="f-ano" type="number" min="1950" max="2035" placeholder="2012"></div>
           <div class="campo"><label for="f-cor">Cor</label>
             <input id="f-cor" type="text" placeholder="Branco"></div>
-          <div class="campo largo"><label for="f-entrada">Chegou na base em</label>
+          <div class="campo largo so-patio"><label for="f-entrada">Chegou na base em</label>
             <input id="f-entrada" type="date"></div>
           <div class="campo largo"><label for="f-fotos">Fotos do veículo na chegada</label>
             <div class="envio">
@@ -2245,8 +2286,19 @@ body.imprimindo .c-fotos{display:none}
         </div>
       </fieldset>
 
+      <fieldset class="so-direta">
+        <legend>Coleta</legend>
+        <div class="campos">
+          <div class="campo largo"><label for="f-origem">Onde coletar</label>
+            <input id="f-origem" type="text" placeholder="Av. Manoel da Nóbrega, 30 - Itararé, São Vicente"></div>
+          <div class="campo largo"><label for="f-junto">Vai junto com — opcional</label>
+            <select id="f-junto"></select>
+            <span class="ajuda">Veículo do pátio que sai na mesma viagem. A ordem de serviço dos dois vira uma só.</span></div>
+        </div>
+      </fieldset>
+
       <fieldset>
-        <legend>Saída — preencha quando souber</legend>
+        <legend id="leg-saida">Saída — preencha quando souber</legend>
         <div class="campos">
           <div class="campo largo"><label for="f-dest">Destino</label>
             <input id="f-dest" type="text" placeholder="Oficina Carrão Automáticos — R. Taubaté, 1300"></div>
@@ -3384,7 +3436,82 @@ document.addEventListener("paste", e => {
    equipe já usa no WhatsApp.
    ========================================================= */
 const mapa = end => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(end);
+/* A viagem é o veículo do pátio mais as coletas que seguem com ele.
+   Ordem: sai da base, faz as coletas, entrega as coletas, entrega o
+   do pátio — é a sequência mais comum; quem souber de uma melhor
+   ajusta o texto na ficha, que fica salvo. */
 function montarOS(v){
+  if(v.direta){
+    const par = v.junto && dados.veiculos.find(x => x.id === v.junto);
+    return par ? montarOSViagem(par) : montarOSColeta(v);
+  }
+  if(coletasDe(v).length) return montarOSViagem(v);
+  return montarOSSimples(v);
+}
+const endCompleto = v => v.destino ? destinoLegivel(v.destino) + (v.cidade ? " - " + v.cidade : "") : "";
+function linhasVeiculo(L, v){
+  L.push("*Veículo:* " + (v.modelo || "não informado") + (v.ano ? " | " + v.ano : "") + (v.cor ? " | " + v.cor : ""));
+  L.push("*Placa:* " + (v.placa || "—") + (/\*/.test(v.placa||"") ? " (confirmar na coleta)" : ""));
+  if(v.seguradora || v.assistencia)
+    L.push("*Seguro:* " + (v.seguradora || "—") + (v.assistencia ? " | *Ass.:* " + v.assistencia : ""));
+  if(v.pt)      L.push("⚠️ *PERDA TOTAL*");
+  if(v.travado) L.push("⚠️ Rodas ou câmbio travado — necessário prancha");
+  if(v.condicao) L.push("*Problema:* " + v.condicao);
+}
+function linkDoDestino(v){
+  const ponto = coordenadaEm(v.destino);
+  return ponto ? mapa(ponto.lat + "," + ponto.lon) : mapa(endCompleto(v));
+}
+function montarOSColeta(v){
+  const L = ["*COLETA DIRETA*", ""];
+  linhasVeiculo(L, v);
+  if(v.origem){ L.push(""); L.push("📍 *Coletar em:* " + v.origem); L.push(mapa(v.origem)); }
+  if(v.destino){ L.push(""); L.push("📍 *Entregar em:* " + endCompleto(v)); L.push(linkDoDestino(v)); }
+  if(v.data){ L.push(""); L.push("⏰ *Agendamento:* " + fmtData(v.data) + (v.hora ? " às " + fmtHora(v.hora) : "")); }
+  if(v.obs){ L.push(""); L.push("*Obs:* " + v.obs); }
+  L.push(""); L.push("📋 Enviar checklist imediatamente após a entrega do veículo.");
+  return L.join("\n");
+}
+function montarOSViagem(p){
+  const cs = coletasDe(p);
+  const L = ["*SAÍDA DE BASE + " + (cs.length > 1 ? cs.length + " COLETAS" : "COLETA") + "*", ""];
+  let n = 1;
+  const passo = (t) => L.push("*" + (n++) + ")* " + t);
+  const base = ENDERECO_BASE + ", Santos/SP";
+  passo("*Retirar na base* — " + base);
+  L.push(mapa(base)); L.push("");
+  linhasVeiculo(L, p);
+  cs.forEach(c => {
+    L.push("");
+    passo("*Coletar* — " + (c.origem || "endereço a confirmar"));
+    if(c.origem) L.push(mapa(c.origem));
+    if(c.data) L.push("⏰ " + fmtData(c.data) + (c.hora ? " às " + fmtHora(c.hora) : ""));
+    L.push("");
+    linhasVeiculo(L, c);
+  });
+  cs.forEach(c => {
+    L.push("");
+    passo("*Entregar " + (c.modelo || c.placa || "coleta") + "* — " + (endCompleto(c) || "destino a confirmar"));
+    if(c.destino) L.push(linkDoDestino(c));
+  });
+  L.push("");
+  passo("*Entregar " + (p.modelo || p.placa || "veículo da base") + "* — " + (endCompleto(p) || "destino a confirmar"));
+  if(p.destino) L.push(linkDoDestino(p));
+  if(p.data){ L.push(""); L.push("⏰ *Saída da base:* " + fmtData(p.data) + (p.hora ? " às " + fmtHora(p.hora) : "")); }
+  /* rota inteira num link só, na ordem acima */
+  const paradas = cs.map(c => c.origem).concat(cs.map(endCompleto)).concat([endCompleto(p)]).filter(Boolean);
+  if(paradas.length){
+    const fim = paradas.pop();
+    L.push(""); L.push("🗺️ *Rota completa:*");
+    L.push("https://www.google.com/maps/dir/?api=1&origin=" + encodeURIComponent(base) +
+      "&destination=" + encodeURIComponent(fim) +
+      (paradas.length ? "&waypoints=" + paradas.map(encodeURIComponent).join("%7C") : "") + "&travelmode=driving");
+  }
+  [p].concat(cs).forEach(x => { if(x.obs){ L.push(""); L.push("*Obs " + (x.placa || "") + ":* " + x.obs); } });
+  L.push(""); L.push("📋 Enviar checklist de cada veículo imediatamente após a entrega.");
+  return L.join("\n");
+}
+function montarOSSimples(v){
   const L = [];
   L.push("*SAÍDA DE BASE*");
   L.push("");
@@ -3828,7 +3955,7 @@ function exportarDetalhado(){
   const linhas = [["Placa","Modelo","Ano","Cor","Seguradora","Central","Nº assistência",
     "Condição","Perda total","Rodas/câmbio travado","Avarias","Guincheiro",
     "Status","Entrada na base","Dias na base","Destino","Ponto exato","Cidade","Data agendada","Hora",
-    "Saída realizada","Tentativas sem sucesso","Fotos","Checklist","Observações","Nota","Histórico"]];
+    "Saída realizada","Tentativas sem sucesso","Fotos","Checklist","Observações","Nota","Coleta direta","Origem","Vai junto com","Histórico"]];
   l.forEach(v => {
     const m = marcaSeguradora(v.seguradora);
     const c = m.central && CENTRAIS[m.central];
@@ -3843,7 +3970,8 @@ function exportarDetalhado(){
       v.status, fmtData(paraDia(v.entrada)), diasDe(v),
       v.destino, v.ponto, v.cidade, fmtData(v.data), fmtHora(v.hora),
       v.saida ? fmtCarimbo(v.saida) : "", tentativas(v), lerFotos(v).length,
-      sim(v.checklist), v.obs, v.nota || "", hist ]);
+      sim(v.checklist), v.obs, v.nota || "", sim(v.direta), v.origem || "",
+      ((v.junto && dados.veiculos.find(x => x.id === v.junto)) || {}).placa || "", hist ]);
   });
   baixarCSV("patio-prumo-detalhado_" + carimboArquivo() + ".csv", linhas);
   recado(l.length + (l.length > 1 ? " veículos exportados" : " veículo exportado"));
@@ -3853,16 +3981,20 @@ function exportarDetalhado(){
    TOPO
    ========================================================= */
 function pintarIndicadores(){
-  const ativos = dados.veiculos.filter(v => v.status !== "Entregue");
-  const acao = dados.veiculos.filter(v => requerAcao(v) && !arquivado(v)).length;
+  /* coleta direta não está no pátio: fica fora das contas dele e ganha a sua */
+  const doPatio = dados.veiculos.filter(v => !v.direta);
+  const ativos = doPatio.filter(v => v.status !== "Entregue");
+  const acao = doPatio.filter(v => requerAcao(v) && !arquivado(v)).length;
   const pt = ativos.filter(v => v.pt).length;
-  const hoje = dados.veiculos.filter(v => v.data === hojeISO() && v.status !== "Entregue").length;
+  const hoje = doPatio.filter(v => v.data === hojeISO() && v.status !== "Entregue").length;
+  const coletas = dados.veiculos.filter(v => v.direta && v.status !== "Entregue" && !arquivado(v)).length;
   $("#indicadores").innerHTML =
     (soLeitura ? '<span class="marca-leitura">Somente leitura</span>' : '')+
     '<div class="ind"><b>'+ativos.length+'</b><span>no pátio</span></div>'+
     '<div class="ind i-hoje"><b>'+hoje+'</b><span>saem hoje</span></div>'+
     '<div class="ind i-acao"><b>'+acao+'</b><span>requer ação</span></div>'+
-    '<div class="ind i-pt"><b>'+pt+'</b><span>perda total</span></div>';
+    '<div class="ind i-pt"><b>'+pt+'</b><span>perda total</span></div>'+
+    (coletas ? '<div class="ind"><b>'+coletas+'</b><span>'+(coletas>1?"coletas diretas":"coleta direta")+'</span></div>' : '');
   $("#n-patio").textContent = dados.veiculos.filter(v => !arquivado(v)).length;
   $("#n-agenda").textContent = dados.veiculos.filter(v => v.data && v.status !== "Entregue").length;
 }
@@ -3977,7 +4109,7 @@ function filtrados(){
   if(termo){
     const t = semAcento(termo);
     const tPlaca = t.replace(/[^a-z0-9]/g, "");
-    l = l.filter(v => [v.placa,v.modelo,v.seguradora,v.destino,v.cidade,v.assistencia,v.nota]
+    l = l.filter(v => [v.placa,v.modelo,v.seguradora,v.destino,v.cidade,v.assistencia,v.nota,v.origem]
       .some(c => semAcento(c).includes(t)) ||
       (tPlaca.length >= 3 && semAcento(v.placa).replace(/[^a-z0-9]/g, "").includes(tPlaca)));
   }
@@ -3995,6 +4127,7 @@ function cartao(v){
   if(tf) selos.push(selo("s-tent", tf + (tf > 1 ? " tent." : " tent."),
     tf + (tf > 1 ? " tentativas de entrega sem sucesso" : " tentativa de entrega sem sucesso")));
   if(!v.destino && v.status !== "Entregue") selos.push(selo("s-neutro", "Sem destino", "Ainda sem destino definido"));
+  if(/\*/.test(v.placa || "")) selos.push(selo("s-neutro", "Placa a confirmar", "Placa incompleta — confirmar na coleta"));
   const lf = lerFotos(v), nf = lf.length;
   const arq = arquivado(v);
   /* no máximo quatro: mais que isso aperta o cartão no celular, e o
@@ -4009,14 +4142,29 @@ function cartao(v){
     }).join("") + '</div>' : '';
   const compacto = cartaoModo === "compacto";
   const nota = temNota(v);
+  const direta = ehColeta(v);
+  /* na coleta direta não existe "dias na base": o que importa é a hora */
+  const quando = direta
+    ? '<div class="c-dias c-quando"><b>'+(v.hora ? fmtHora(v.hora) : v.data ? fmtData(v.data).slice(0,5) : "—")+'</b>'+
+      '<span>'+(v.data ? (v.hora ? fmtData(v.data).slice(0,5) + " · coleta" : "coleta") : "sem data")+'</span></div>'
+    : '<div class="c-dias"><b class="'+classeDias(v,d)+'">'+fmtDias(d)+'</b><span>'+(d===1?"dia":"dias")+' na base</span></div>';
+  /* vínculo de viagem, nos dois sentidos; tocar abre o outro */
+  const par = direta ? (v.junto && dados.veiculos.find(x => x.id === v.junto)) : null;
+  const levados = direta ? [] : coletasDe(v);
+  const ICONE_ELO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">'+
+    '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>';
+  const elo = par
+    ? '<button type="button" class="c-junto" data-abre="'+par.id+'">'+ICONE_ELO+'<span>Vai junto com '+esc(nomeCurto(par))+'</span></button>'
+    : levados.length
+      ? levados.map(x => '<button type="button" class="c-junto" data-abre="'+x.id+'">'+ICONE_ELO+
+          '<span>Leva junto: '+esc(nomeCurto(x))+'</span></button>').join("")
+      : '';
   /* Duas montagens da mesma informação. Amplo: a linha do topo fica com
      placa e contagem, e os logos descem para uma linha só deles, onde
      cabem grandes. Compacto: tudo na linha da placa, logos menores. */
   const cabeca = compacto
-    ? '<div class="c-topo">'+placaHTML(v.placa)+ seloTopo(v.seguradora)+
-        '<div class="c-dias"><b class="'+classeDias(v,d)+'">'+fmtDias(d)+'</b><span>'+(d===1?"dia":"dias")+' na base</span></div></div>'
-    : '<div class="c-topo">'+placaHTML(v.placa)+ (nota ? notaHTML(v) : '')+
-        '<div class="c-dias"><b class="'+classeDias(v,d)+'">'+fmtDias(d)+'</b><span>'+(d===1?"dia":"dias")+' na base</span></div></div>';
+    ? '<div class="c-topo">'+placaHTML(v.placa)+ seloTopo(v.seguradora)+ quando+'</div>'
+    : '<div class="c-topo">'+placaHTML(v.placa)+ (nota ? notaHTML(v) : '')+ quando+'</div>';
   const marca = compacto
     ? '<div class="c-meta">'+esc(v.seguradora||"Sem seguradora")+
         (v.assistencia?' · <span class="mono">'+esc(v.assistencia)+'</span>':'')+'</div>'
@@ -4026,7 +4174,7 @@ function cartao(v){
         (marcaSeguradora(v.seguradora).logo ? '' : '<span class="nome-seg">'+esc(v.seguradora||"Sem seguradora")+'</span>')+
         (v.assistencia?'<span class="mono num-assist">'+esc(v.assistencia)+'</span>':'')+'</div>';
   /* div com papel de botão: botão dentro de botão o navegador desmonta */
-  return '<div class="cartao '+CLASSE[v.status]+(arq?" arquivado":"")+(nota?" com-nota":"")+(enviandoFoto[v.id]?" enviando":"")+(tira?" tem-fotos":"")+'" data-id="'+v.id+'"'+
+  return '<div class="cartao '+CLASSE[v.status]+(arq?" arquivado":"")+(nota?" com-nota":"")+(enviandoFoto[v.id]?" enviando":"")+(tira?" tem-fotos":"")+(direta?" direta":"")+'" data-id="'+v.id+'"'+
     ' role="button" tabindex="0" aria-label="Abrir ficha de '+esc(v.placa||"veículo")+'">'+
     /* No canto, fora do caminho: o cartão inteiro abre a ficha, então a
        alça precisa de área própria para o arraste não virar clique. */
@@ -4035,11 +4183,15 @@ function cartao(v){
     cabeca+ (nota && compacto ? notaHTML(v, "solta") : '')+
     '<div class="c-modelo">'+esc(v.modelo||"Modelo não informado")+
       (nf?'<span class="marca-foto">▣ '+nf+'</span>':'')+'</div>'+
+    elo+
     tira+
     marca+
-    (v.destino||v.data ? '<div class="c-dest">'+(v.destino?'<b>'+esc(destinoLegivel(v.destino))+'</b>':'')+
+    (direta
+      ? '<div class="c-dest c-rota"><b>Coleta:</b> '+esc(v.origem||"a definir")+
+          '<br><b>Entrega:</b> '+esc(v.destino ? destinoLegivel(v.destino) : "a definir")+(v.cidade?' · '+esc(v.cidade):'')+'</div>'
+      : (v.destino||v.data ? '<div class="c-dest">'+(v.destino?'<b>'+esc(destinoLegivel(v.destino))+'</b>':'')+
       (v.cidade?'<br>'+esc(v.cidade):'')+
-      (v.data?'<br>'+fmtData(v.data)+(v.hora?" · "+fmtHora(v.hora):""):'')+'</div>' : '')+
+      (v.data?'<br>'+fmtData(v.data)+(v.hora?" · "+fmtHora(v.hora):""):'')+'</div>' : ''))+
     (enviandoFoto[v.id] ? '<div class="c-envio" aria-live="polite">'+esc(enviandoFoto[v.id])+'</div>' : '')+
     '<div class="c-pe">'+
       (selos.length?'<div class="selos">'+selos.join("")+'</div>':'')+
@@ -4128,13 +4280,28 @@ let ordemStatus = (function(){
 function pintarPatio(){
   pintarSeguradoras();
   pintarCidades();
-  const l = filtrados(), alvo = $("#lista-patio");
+  let l = filtrados();
+  const alvo = $("#lista-patio");
   if(!dados.veiculos.length){
     alvo.innerHTML = '<div class="vazio"><p>Nenhum veículo no pátio ainda.</p>'+
       '<button class="btn btn-p" data-ir="entrada">Registrar o primeiro</button></div>'; return;
   }
   if(!l.length){ alvo.innerHTML = '<div class="vazio"><p>Nenhum veículo com esse filtro.</p></div>'; return; }
-  alvo.innerHTML = ordemStatus.filter(s => l.some(v => v.status === s)).map(s => {
+  /* coletas diretas em andamento têm faixa própria, no topo, por horário;
+     entregue volta para a regra de todo mundo */
+  const emColeta = v => v.direta && v.status !== "Entregue";
+  const coletas = l.filter(emColeta).sort((a,b) =>
+    ((a.data||"9999")+(a.hora||"")).localeCompare((b.data||"9999")+(b.hora||"")));
+  const fechadoC = gruposFechados.has("__coletas");
+  const faixaColetas = !coletas.length ? '' :
+    '<div class="grupo g-coletas'+(fechadoC?" fechado":"")+'" data-status="__coletas"><div class="grupo-cab">'+
+      '<button class="cab-toque" data-fechar="__coletas" aria-expanded="'+(!fechadoC)+'">'+
+        '<h2>Coletas diretas</h2><span class="qt">'+coletas.length+'</span>'+
+        '<svg class="seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'+
+      '</button></div>'+
+      '<div class="grade'+(primeiraPintura?" entrando":"")+'">'+coletas.map(cartao).join("")+'</div></div>';
+  l = l.filter(v => !emColeta(v));
+  alvo.innerHTML = faixaColetas + ordemStatus.filter(s => l.some(v => v.status === s)).map(s => {
     const g = l.filter(v => v.status === s).sort(ordenador());
     const fechado = gruposFechados.has(s);
     return '<div class="grupo'+(fechado?" fechado":"")+'" data-status="'+esc(s)+'"><div class="grupo-cab">'+
@@ -4178,7 +4345,7 @@ function ligarOrdenacao(){
   const cont = $("#lista-patio");
   cont.querySelectorAll(".puxa-grupo").forEach(alca => arrastarGrupo(alca, cont));
   if(ordemLista === "manual")
-    cont.querySelectorAll(".grade .cartao").forEach(c => armarArrasteCartao(c));
+    cont.querySelectorAll(".grupo:not(.g-coletas) .grade .cartao").forEach(c => armarArrasteCartao(c));
 }
 
 /* Quem quer reordenar pega no cartão, não numa alça de 20px escondida no
@@ -4432,8 +4599,11 @@ function pintarAgenda(){
       l.filter(v => v.data === d).map(v =>
         '<button class="evento" data-id="'+v.id+'">'+
           '<span class="ev-hora mono">'+(fmtHora(v.hora)||"—")+'</span>'+ placaHTML(v.placa,true)+
-          '<span class="ev-corpo"><span class="m">'+esc(v.modelo||"—")+'</span>'+
-          '<span class="s">'+esc(v.destino||"destino a definir")+(v.cidade?" · "+esc(v.cidade):"")+'</span></span>'+
+          '<span class="ev-corpo"><span class="m">'+esc(v.modelo||"—")+
+            (v.direta ? '<span class="ev-tag">coleta direta</span>' : '')+
+            (!v.direta && coletasDe(v).length ? '<span class="ev-tag">+'+coletasDe(v).length+' coleta</span>' : '')+'</span>'+
+          '<span class="s">'+(v.direta ? esc(v.origem||"origem a definir")+" → " : "")+
+            esc(v.destino||"destino a definir")+(v.cidade?" · "+esc(v.cidade):"")+'</span></span>'+
         '</button>').join("")+'</div>';
   }).join("");
   alvo.innerHTML = html;
@@ -4670,6 +4840,32 @@ function sugestoes(id, campo){
   if(!vistos.length) return "";
   return '<datalist id="'+id+'">'+vistos.map(x => '<option>'+esc(x)+'</option>').join("")+'</datalist>';
 }
+/* Na ficha: quem é do pátio vê as coletas que leva; a coleta vê com
+   quem vai. Mudar aqui muda a ordem de serviço dos dois. */
+function blocoJunto(v){
+  if(v.direta){
+    const l = saidasDoPatio();
+    const atual = v.junto && dados.veiculos.find(x => x.id === v.junto);
+    if(atual && !l.some(x => x.id === atual.id)) l.unshift(atual);
+    return '<div class="bloco"><h3>Viagem</h3><div class="campo largo"><label for="s-junto">Vai junto com</label>'+
+      '<select id="s-junto"><option value="">Sozinha — não segue com ninguém do pátio</option>'+
+      l.map(x => opcaoSaida(x).replace('value="'+x.id+'"', 'value="'+x.id+'"'+(x.id===v.junto?' selected':''))).join("")+
+      '</select></div></div>';
+  }
+  if(v.status === "Entregue") return "";
+  const leva = coletasDe(v);
+  const soltas = dados.veiculos.filter(x => x.direta && !x.junto && x.status !== "Entregue" && !arquivado(x));
+  return '<div class="bloco"><h3>Leva junto'+(leva.length ? ' — '+leva.length : '')+'</h3>'+
+    (leva.length ? '<ul class="lj-lista">'+leva.map(x =>
+      '<li><button type="button" class="lj-abre" data-abre="'+x.id+'">'+esc(nomeCurto(x))+
+        '<small>'+esc((x.origem||"origem a definir")+" → "+(x.destino ? destinoLegivel(x.destino) : "destino a definir"))+'</small></button>'+
+      '<button type="button" class="lj-tira" data-tira-junto="'+x.id+'" title="Tirar desta viagem" aria-label="Tirar '+esc(x.placa||"coleta")+' desta viagem">✕</button></li>').join("")+'</ul>'
+      : '<p style="color:var(--rotulo-3);font-size:.8125rem;margin:.25rem 0 .625rem">Nenhuma coleta direta segue com este veículo.</p>')+
+    '<div class="acoes lj-add">'+
+      (soltas.length ? '<select id="lj-escolhe" aria-label="Juntar uma coleta já registrada"><option value="">Juntar coleta já registrada…</option>'+
+        soltas.map(x => '<option value="'+x.id+'">'+esc(nomeCurto(x))+'</option>').join("")+'</select>' : '')+
+      '<button type="button" class="btn btn-s" id="lj-nova">Nova coleta direta</button></div></div>';
+}
 function conteudoPainel(v){
   const hist = dados.eventos.filter(e => e.veiculo === v.id).sort((a,b) => b.quando.localeCompare(a.quando));
   const fotos = lerFotos(v);
@@ -4679,7 +4875,8 @@ function conteudoPainel(v){
     '<div class="p-topo"><div>'+placaHTML(v.placa)+
       '<div style="margin-top:.5rem;font-weight:600;letter-spacing:-.01em">'+esc(v.modelo||"Modelo não informado")+'</div>'+
       '<div class="seg-linha">'+seloSeg(v.seguradora)+
-        '<span class="nome '+classeDias(v,d)+'">'+fmtDias(d)+(d===1?' dia':' dias')+' na base</span></div></div>'+
+        (v.direta ? '<span class="nome">Coleta direta · não passa pela base</span>'
+          : '<span class="nome '+classeDias(v,d)+'">'+fmtDias(d)+(d===1?' dia':' dias')+' na base</span>')+'</div></div>'+
       /* Subiram para a linha do ✕: como ícones não precisam de faixa
          própria, e a ficha ganha de volta a altura que ela ocupava.
          O de copiar é o mesmo balão do cartão de fora — mesma ação,
@@ -4708,8 +4905,11 @@ function conteudoPainel(v){
         (v.pt?'<dt>Perda total</dt><dd style="color:var(--vermelho);font-weight:600">Sim</dd>':'')+
         (v.travado?'<dt>Travado</dt><dd>Rodas ou câmbio</dd>':'')+
         li("Avarias",v.avarias)+'</dl></div>'+
-      '<div class="bloco"><h3>Saída</h3><div class="campos">'+
-        '<div class="campo largo"><label for="s-dest">Destino</label>'+
+      blocoJunto(v)+
+      '<div class="bloco"><h3>'+(v.direta ? 'Coleta e entrega' : 'Saída')+'</h3><div class="campos">'+
+        (v.direta ? '<div class="campo largo"><label for="s-origem">Onde coletar</label>'+
+          '<input id="s-origem" type="text" value="'+esc(v.origem||"")+'" placeholder="Endereço da coleta"></div>' : '')+
+        '<div class="campo largo"><label for="s-dest">'+(v.direta ? 'Entregar em' : 'Destino')+'</label>'+
           '<input id="s-dest" type="text" list="l-dest" value="'+esc(v.destino||"")+'" '+
           'placeholder="Oficina, pátio ou endereço"></div>'+
         '<div class="campo largo"><label for="s-ponto">Ponto exato — opcional</label>'+
@@ -4924,13 +5124,15 @@ function ligarPainel(v){
   /* saída editável na própria ficha: grava ao sair do campo */
   const salvarSaida = async () => {
     const campos = {
+      ...(v.direta ? { origem: ($("#s-origem") || {value:""}).value.trim() } : {}),
       destino: $("#s-dest").value.trim(),
       cidade:  $("#s-cidade").value.trim(),
       ponto:   $("#s-ponto").value.trim(),
       data:    $("#s-data").value || null,
       hora:    $("#s-hora").value || null
     };
-    const igual = campos.destino === (v.destino||"") && campos.cidade === (v.cidade||"") &&
+    const igual = (!v.direta || campos.origem === (v.origem||"")) &&
+                  campos.destino === (v.destino||"") && campos.cidade === (v.cidade||"") &&
                   campos.ponto === (v.ponto||"") &&
                   campos.data === (v.data||null) && (campos.hora||"") === fmtHora(v.hora);
     if(igual) return;
@@ -4946,7 +5148,25 @@ function ligarPainel(v){
       recado("Saída atualizada");
     }catch(err){ recado("Não salvou: " + err.message); }
   };
-  ["#s-dest","#s-cidade","#s-ponto","#s-data","#s-hora"].forEach(id => { const el = $(id); if(el) el.onchange = salvarSaida; });
+  ["#s-origem","#s-dest","#s-cidade","#s-ponto","#s-data","#s-hora"].forEach(id => { const el = $(id); if(el) el.onchange = salvarSaida; });
+  /* vínculo de viagem */
+  const mudarJunto = async (coleta, para) => {
+    try{
+      Object.assign(coleta, await atualizarVeiculo(coleta.id, { junto: para || null }));
+      pintar(); repintarPainel(v);
+      recado(para ? (coleta.placa || "Coleta") + " vai junto com " + ((dados.veiculos.find(x => x.id === para) || {}).placa || "o veículo")
+                  : (coleta.placa || "Coleta") + " segue sozinha");
+    }catch(err){ recado("Não salvou: " + err.message); }
+  };
+  const sj = $("#s-junto");
+  if(sj) sj.onchange = () => mudarJunto(v, sj.value);
+  const lje = $("#lj-escolhe");
+  if(lje) lje.onchange = () => { const c = dados.veiculos.find(x => x.id === lje.value); if(c) mudarJunto(c, v.id); };
+  painel.querySelectorAll("[data-tira-junto]").forEach(bt => {
+    bt.onclick = () => { const c = dados.veiculos.find(x => x.id === bt.dataset.tiraJunto); if(c) mudarJunto(c, null); };
+  });
+  const ljn = $("#lj-nova");
+  if(ljn) ljn.onclick = () => { const alvo = v; fechar(); novaColetaCom(alvo); };
   const pt = $("#s-ponto"), ajudaPt = $("#ajuda-ponto");
   function conferePonto(){
     if(!ajudaPt) return;
@@ -5138,7 +5358,8 @@ function arrastavel(alca){
 const CAMPOS = { placa:"f-placa", modelo:"f-modelo", ano:"f-ano", cor:"f-cor", entrada:"f-entrada",
   seguradora:"f-seg", assistencia:"f-assist", condicao:"f-cond", guincheiro:"f-guinch",
   pt:"f-pt", travado:"f-trava", avarias:"f-avarias", destino:"f-dest", cidade:"f-cidade",
-  data:"f-data", hora:"f-hora", ponto:"f-ponto", os:"f-os", obs:"f-obs" };
+  data:"f-data", hora:"f-hora", ponto:"f-ponto", os:"f-os", obs:"f-obs",
+  direta:"f-direta", origem:"f-origem", junto:"f-junto" };
 /* o campo datetime-local trabalha em hora local; o banco guarda em UTC */
 function paraCampo(iso){
   if(!iso) return "";
@@ -5172,6 +5393,8 @@ function deDia(valor){
    posição aceita os dois e fica como veio. */
 const PLACA_OK = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/;
 function normPlaca(t){
+  /* placa ainda por confirmar chega com asterisco no lugar do que falta */
+  if(/\*/.test(String(t || ""))) return String(t).toUpperCase().replace(/[^A-Z0-9*]/g, "");
   let p = String(t || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
   if(p.length !== 7) return p;
   const letra = {"0":"O","1":"I"}, numero = {"O":"0","I":"1","Q":"0"};
@@ -5188,9 +5411,12 @@ function lerForm(){
      pelo blur do campo, e salvar com Enter também não */
   if(nomeAuto && o.modelo) o.modelo = padraoNome(o.modelo);
   if(o.placa) o.placa = normPlaca(o.placa);
+  if(!o.junto || !o.direta) o.junto = null;
+  if(!o.direta) o.origem = "";
   return o;
 }
 function escreverForm(v){
+  pintarOpcoesJunto(v && v.junto, v && v.id);
   for(const k in CAMPOS){
     const el = document.getElementById(CAMPOS[k]);
     if(el.type === "checkbox"){ el.checked = !!(v && v[k]); continue; }
@@ -5204,7 +5430,56 @@ function escreverForm(v){
      carregado de um rascunho ficaria do tamanho de antes, com o texto
      escondido dentro */
   document.querySelectorAll("#p-entrada textarea").forEach(medirAltura);
+  modoForm(v && v.direta ? "direta" : "patio");
 }
+/* =========================================================
+   TIPO DO REGISTRO
+   O mesmo formulário serve para as duas coisas. Na coleta
+   direta some "chegou na base" e aparece "onde coletar" e
+   com quem ela segue.
+   ========================================================= */
+const ehColeta = v => !!(v && v.direta);
+const coletasDe = v => dados.veiculos.filter(x => x.direta && x.junto === v.id && x.status !== "Entregue" && !arquivado(x));
+const nomeCurto = v => (v.modelo || "Veículo") + (v.placa ? " · " + v.placa : "");
+function saidasDoPatio(){
+  return dados.veiculos.filter(x => !x.direta && x.status !== "Entregue" && !arquivado(x))
+    .sort((a,b) => (a.data||"9999").localeCompare(b.data||"9999") || (a.placa||"").localeCompare(b.placa||""));
+}
+function opcaoSaida(x){
+  return '<option value="'+x.id+'">'+esc(nomeCurto(x))+
+    (x.data ? ' — sai '+fmtData(x.data).slice(0,5)+(x.hora?' '+fmtHora(x.hora):'') : '')+'</option>';
+}
+function pintarOpcoesJunto(atual, proprio){
+  const sel = $("#f-junto");
+  if(!sel) return;
+  const l = saidasDoPatio().filter(x => x.id !== proprio);
+  if(atual && !l.some(x => x.id === atual)){
+    const x = dados.veiculos.find(y => y.id === atual);
+    if(x) l.unshift(x);
+  }
+  sel.innerHTML = '<option value="">Sozinha — não segue com ninguém do pátio</option>' + l.map(opcaoSaida).join("");
+}
+function textoBotaoSalvar(){
+  return editando ? "Salvar alterações" : $("#f-direta").checked ? "Registrar coleta" : "Registrar entrada";
+}
+function modoForm(tipo){
+  const d = tipo === "direta";
+  $("#f-direta").checked = d;
+  $("#form-entrada").dataset.tipo = d ? "direta" : "patio";
+  document.querySelectorAll(".tipo-op").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tipo === (d ? "direta" : "patio"))));
+  const leg = $("#leg-saida");
+  if(leg) leg.textContent = d ? "Entrega" : "Saída — preencha quando souber";
+  if(!editando){
+    $("#form-titulo").textContent = d ? "Registrar coleta direta" : "Registrar entrada";
+    $("#form-sub").textContent = d
+      ? "Atendimento que não passa pela base: coleta na origem e entrega no destino. Placa incompleta pode ir com asterisco (ABC1D**)."
+      : "Só a placa é obrigatória. O resto pode ser completado depois, quando chegar a ordem de serviço.";
+  }
+  $("#btn-salvar").textContent = textoBotaoSalvar();
+}
+document.querySelectorAll(".tipo-op").forEach(b => {
+  b.onclick = () => { modoForm(b.dataset.tipo); if(b.dataset.tipo === "direta") pintarOpcoesJunto($("#f-junto").value, editando); salvarRascunho(); };
+});
 /* =========================================================
    RASCUNHO
    O que está sendo digitado fica guardado no próprio
@@ -5277,6 +5552,17 @@ function limpar(){
   $("#form-titulo").textContent = "Registrar entrada";
   $("#form-sub").textContent = "Só a placa é obrigatória. O resto pode ser completado depois, quando chegar a ordem de serviço.";
   $("#btn-salvar").textContent = "Registrar entrada";
+  modoForm("patio");
+}
+/* abre o cadastro já como coleta direta, presa a um veículo do pátio */
+function novaColetaCom(v){
+  limpar();
+  modoForm("direta");
+  pintarOpcoesJunto(v.id);
+  $("#f-junto").value = v.id;
+  trocarAba("entrada");
+  window.scrollTo({top:0, behavior: REDUZIR ? "auto" : "smooth"});
+  $("#f-colar").focus();
 }
 let placaLiberada = "";   /* placa que a pessoa já autorizou a repetir no pátio */
 let placaForaLiberada = null;
@@ -5287,12 +5573,12 @@ async function salvarEntrada(){
   /* a pergunta acontece antes de o botão virar "Salvando…" */
   /* placa fora do padrão pode ser mercosul de outro país ou erro de
      digitação: pergunta uma vez, não impede */
-  if(!PLACA_OK.test(campos.placa) && placaForaLiberada !== campos.placa){
+  if(!campos.direta && !PLACA_OK.test(campos.placa) && placaForaLiberada !== campos.placa){
     placaForaLiberada = campos.placa;
     pedeConfirmacao(b, "Placa fora do padrão (ABC1D23) — salvar assim?", salvarEntrada);
     return;
   }
-  if(!editando && placaLiberada !== campos.placa &&
+  if(!editando && placaLiberada !== campos.placa && PLACA_OK.test(campos.placa) &&
      dados.veiculos.some(v => normPlaca(v.placa) === campos.placa && v.status !== "Entregue")){
     placaLiberada = campos.placa;
     pedeConfirmacao(b, "Já está no pátio — registrar assim mesmo?", salvarEntrada);
@@ -5307,8 +5593,9 @@ async function salvarEntrada(){
       Object.assign(v, await atualizarVeiculo(v.id, campos));
       limparRascunho(); limpar(); pintar(); trocarAba("patio"); recado("Alterações salvas");
     }else{
-      campos.entrada = campos.entrada ? deDia(campos.entrada) : new Date().toISOString();
-      campos.status = campos.data ? "Saída agendada" : "Na base";
+      campos.entrada = campos.entrada && !campos.direta ? deDia(campos.entrada) : new Date().toISOString();
+      /* coleta direta nunca está "na base": nasce agendada */
+      campos.status = campos.data || campos.direta ? "Saída agendada" : "Na base";
       const arquivos = [...$("#f-fotos").files];
       if(arquivos.length){
         b.textContent = "Enviando fotos…";
@@ -5317,13 +5604,17 @@ async function salvarEntrada(){
       }
       const novo = await inserirVeiculo(campos);
       dados.veiculos.unshift(novo);
-      dados.eventos.unshift(await inserirEvento({
+      if(!campos.direta) dados.eventos.unshift(await inserirEvento({
         veiculo:novo.id, quando:novo.entrada, tipo:"Entrada na base", resultado:"Sucesso", motivo:"",
         obs: campos.guincheiro ? "Trazido por " + campos.guincheiro : "" }));
-      limparRascunho(); limpar(); pintar(); trocarAba("patio"); recado(campos.placa + " registrado no pátio");
+      const junto = campos.direta && campos.junto && dados.veiculos.find(x => x.id === campos.junto);
+      limparRascunho(); limpar(); pintar(); trocarAba("patio");
+      recado(campos.direta
+        ? campos.placa + " registrada como coleta direta" + (junto ? " — segue com " + (junto.placa || "o veículo") : "")
+        : campos.placa + " registrado no pátio");
     }
   }catch(err){ recado("Não salvou: " + err.message); }
-  finally{ b.disabled = false; b.textContent = editando ? "Salvar alterações" : "Registrar entrada"; }
+  finally{ b.disabled = false; b.textContent = textoBotaoSalvar(); }
 }
 
 /* =========================================================
@@ -6144,6 +6435,38 @@ function lerChamado(bruto){
     return "";
   }
 
+  /* Portal de serviço (Mapfre "Detalhe do serviço"): rótulo sem dois-pontos
+     ("Assistência 126455509") e endereço em bloco, com o título numa linha
+     e o valor na seguinte ("Lugar de assistência" / "Destino"). */
+  function solto(){
+    const querem = [...arguments];
+    for(const l of linhas){
+      const sl = semAcento(l);
+      for(const q of querem){
+        if(sl.startsWith(q + " ") || sl.startsWith(q + ":")){
+          const v = l.slice(q.length).replace(/^\s*[:\-]?\s*/, "").trim();
+          if(v) return v;
+        }
+      }
+    }
+    return "";
+  }
+  const TITULOS = ["lugar de assistencia","destino","movimento economico","documentos","informacao adicional",
+    "dados do servico","origem","local de origem","endereco de coleta","chat","anexar"];
+  function bloco(titulo){
+    const i = linhas.findIndex(l => semAcento(l).replace(/[:\s]+$/,"").trim() === titulo);
+    if(i < 0) return "";
+    const partes = [];
+    for(let k = i + 1; k < linhas.length && partes.length < 2; k++){
+      const t = semAcento(linhas[k]).replace(/[:\s]+$/,"").trim();
+      if(TITULOS.includes(t)) break;
+      partes.push(linhas[k]);
+    }
+    return partes.join(" ").replace(/\s*\/\/\/\s*/g, " — ").trim();
+  }
+  achado.origem = rotulo("lugar de assistencia","local de origem","endereco de coleta","local da coleta") ||
+    bloco("lugar de assistencia") || bloco("local de origem");
+
   /* Placa: rótulo primeiro. Sem rótulo, o formato sozinho engana — "GOL 2014"
      encaixa perfeitamente em AAA1A23. Então cada candidato é pontuado: vale
      mais quem vem depois da palavra placa, quem tem letra no meio dos números
@@ -6153,6 +6476,13 @@ function lerChamado(bruto){
     return m ? m[1] + m[2] : "";
   };
   achado.placa = formatoPlaca(rotulo("placa"));
+  /* "Matricula EWN8G** (Pendente de validar)": placa incompleta, fica marcada */
+  /* lido do texto cru: as linhas perdem os asteriscos (são negrito no WhatsApp) */
+  const mm = texto.match(/matr[ií]cula\s*[:\-]?\s*([A-Za-z]{3}[\s\-]?[0-9A-Za-z*]{1,4})/i);
+  if(!achado.placa && mm && /\d/.test(mm[1])){
+    const bruto = mm[1].toUpperCase();
+    achado.placa = /\*/.test(bruto) ? bruto.replace(/[^A-Z0-9*]/g,"") : (formatoPlaca(bruto) || bruto.replace(/[^A-Z0-9]/g,""));
+  }
   if(!achado.placa){
     const alto = texto.toUpperCase();
     const re = /\b([A-Z]{3})([\s\-]?)(\d[A-Z0-9]\d{2})\b/g;
@@ -6169,8 +6499,8 @@ function lerChamado(bruto){
     if(melhorNota > -2) achado.placa = melhor;
   }
 
-  achado.assistencia = rotulo("assistencia","chamado","protocolo","atendimento","senha","os",
-    "numero do chamado","ticket","solicitacao").replace(/[^0-9A-Za-z\/\-\.]/g,"");
+  achado.assistencia = (rotulo("assistencia","chamado","protocolo","atendimento","senha","os",
+    "numero do chamado","ticket","solicitacao") || solto("assistencia")).replace(/[^0-9A-Za-z\/\-\.]/g,"");
   if(!achado.assistencia){
     const m = texto.match(/\b\d{8,14}\b/);        /* número comprido solto costuma ser a assistência */
     if(m) achado.assistencia = m[0];
@@ -6225,7 +6555,7 @@ function lerChamado(bruto){
 
   /* destino: rótulo, senão a primeira linha que parece endereço */
   achado.destino = rotulo("destino","local de entrega","entrega","oficina","local de destino",
-    "endereco de destino","levar para","liberado para");
+    "endereco de destino","levar para","liberado para") || bloco("destino");
   if(achado.destino && EH_BASE(achado.destino)){
     achado.destino = "";        /* chegando na base: não há saída marcada ainda */
     achado.paraBase = true;
@@ -6237,6 +6567,7 @@ function lerChamado(bruto){
     const via = /\b(rua|av|avenida|rod|rodovia|estrada|travessa|praca|alameda|marginal)\b/;
     for(const l of linhas){
       if(/origem/.test(semAcento(l))) continue;
+      if(achado.origem && semAcento(achado.origem).includes(semAcento(l).slice(0, 30))) continue;
       const pos = semAcento(l).search(via);
       if(pos >= 0){ achado.destino = l.slice(pos).trim(); break; }
     }
@@ -6250,7 +6581,10 @@ function lerChamado(bruto){
 
   /* só data de agendamento entra. "Abertura" é quando o chamado nasceu, não
      quando o veículo sai — preencher a saída com ela seria mentira. */
-  let dt = rotulo("data","agendamento","previsao","data agendada","data de saida","retirada");
+  /* "Data do serviço" vem antes de tudo: "Data de fim" e "Data de aceitação"
+     também começam com "data" e não são a hora de ir buscar */
+  let dt = solto("data do servico") ||
+    rotulo("data do servico","agendamento","previsao","data agendada","data de saida","retirada","data");
   if(!dt){
     /* sem rótulo, aceita a data que estiver numa linha que fala de agendamento —
        nunca a de "abertura", que é quando o chamado nasceu */
@@ -6267,7 +6601,7 @@ function lerChamado(bruto){
   /* A lista de condições é fixa, mas o texto vem livre: "Pane não identificada",
      "Alternador". Encaixa no que dá; o que não encaixa vira Outro e o texto
      original vai para as observações, para não se perder. */
-  const problema = rotulo("condicao","problema","ocorrencia","sinistro","motivo","defeito");
+  const problema = rotulo("condicao","problema","ocorrencia","sinistro","motivo","defeito","causa");
   const p = semAcento(problema);
   if(/pane eletrica|eletric/.test(p)) achado.condicao = "Pane elétrica";
   else if(/colisao|acidente|batida/.test(p)) achado.condicao = "Acidente de trânsito";
@@ -6284,9 +6618,9 @@ function lerChamado(bruto){
 
   /* o que não tem campo próprio, mas o pátio precisa saber, vai para observações */
   const notas = [];
-  const cliente = rotulo("cliente","segurado","nome");
-  const fone = rotulo("telefone","fone","celular","contato");
-  const origem = rotulo("origem","local de origem","retirada em","saida");
+  const cliente = rotulo("cliente","segurado","nome","beneficiario") || solto("beneficiario");
+  const fone = rotulo("telefone","fone","celular","contato") || solto("telefone");
+  const origem = achado.origem ? "" : rotulo("origem","local de origem","retirada em","saida");
   if(cliente) notas.push("Cliente: " + cliente + (fone ? " · " + fone : ""));
   else if(fone) notas.push("Telefone: " + fone);
   if(origem && !EH_BASE(origem)) notas.push("Origem: " + origem);
@@ -6295,7 +6629,10 @@ function lerChamado(bruto){
   if(obsOriginal) notas.push(obsOriginal);
   achado.obs = notas.join("\n");
   achado.pt = /perda total|\bpt\b/.test(inteiro);
-  achado.travado = /travad|prancha|roda livre nao|sem roda livre/.test(inteiro);
+  /* "RODAS OU CAMBIO TRAVADO?: NÃO" tem a palavra travado e a resposta não */
+  const respTrava = semAcento(rotulo("rodas ou cambio travado","travado","cambio travado") || "");
+  achado.travado = /^s(im)?\b/.test(respTrava) ? true : /^n(ao)?\b/.test(respTrava) ? false
+    : /travad|prancha|roda livre nao|sem roda livre/.test(inteiro.replace(/rodas ou cambio travado\??\s*:?\s*nao/g, ""));
   return achado;
 }
 
@@ -6303,6 +6640,10 @@ function preencherComChamado(){
   const texto = $("#f-colar").value.trim();
   if(!texto){ recado("Cole o texto do chamado primeiro"); return; }
   const achado = lerChamado(texto);
+  if(!$("#f-direta").checked && achado.origem){
+    achado.obs = (achado.obs ? achado.obs + "\n" : "") + "Origem: " + achado.origem;
+    delete achado.origem;
+  }
   let n = 0;
   const marcar = el => {
     el.classList.add("preenchido");
@@ -6672,7 +7013,7 @@ function balaoDe(v, km){
   return '<div class="balao"><b>' + esc(v.modelo || "Modelo não informado") + '</b>' +
     esc(v.seguradora || "") + (v.destino ? '<br>' + esc(destinoLegivel(v.destino)) : '') +
     (v.cidade ? '<br>' + esc(v.cidade) : '') +
-    '<br>' + v.status + ' · ' + d + (d === 1 ? ' dia' : ' dias') + ' na base' +
+    '<br>' + v.status + ' · ' + (v.direta ? 'coleta direta' : d + (d === 1 ? ' dia' : ' dias') + ' na base') +
     (km != null ? ' · ' + km + ' km da base' : '') +
     (aprox ? '<br><span class="alerta-aprox">Posição aproximada' +
       (soLeitura ? '' : ' — arraste o pino para o lugar certo') + '</span>' : '') +
@@ -7200,6 +7541,8 @@ document.addEventListener("click", e => {
   }
   const zap = e.target.closest("[data-zap]");
   if(zap){ copiarOS(zap.dataset.zap, zap); return; }   // não abre a ficha junto
+  const outro = e.target.closest("[data-abre]");
+  if(outro){ abrir(outro.dataset.abre); return; }
   const fc = e.target.closest("[data-foto-cartao]");
   if(fc){
     const v = dados.veiculos.find(x => x.id === fc.dataset.fotoCartao);
@@ -7271,7 +7614,7 @@ $("#rel-simples").onclick = relatorioSimples;
 $("#rel-detalhe").onclick = relatorioDetalhado;
 $("#exp-simples").onclick = exportarSimples;
 $("#exp-detalhe").onclick = exportarDetalhado;
-$("#f-placa").oninput = e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g,""); };
+$("#f-placa").oninput = e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9*-]/g,""); };
 /* ao sair do campo já mostra a placa como vai ser gravada */
 $("#f-placa").addEventListener("blur", e => { if(e.target.value) e.target.value = normPlaca(e.target.value); });
 $("#f-placa").onkeydown = e => { if(e.key === "Enter") salvarEntrada(); };
