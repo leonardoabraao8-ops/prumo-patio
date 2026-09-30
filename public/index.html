@@ -3781,7 +3781,16 @@ if($("#avisos-ligar")){
 const SOM = "prumo-som-avisos-v1";
 const SOM_PADRAO = { vol: 70, antes: 1.5, atraso: 2.5 };
 let somConf = Object.assign({}, SOM_PADRAO);
-try{ Object.assign(somConf, JSON.parse(recuperar(SOM) || "{}") || {}); }catch(e){}
+/* relê do aparelho toda vez: quem toca o alarme costuma ser outra aba do
+   Pátio, aberta antes do ajuste — com a cópia antiga na memória, ela
+   tocava a configuração velha */
+function lerSom(){
+  const c = Object.assign({}, SOM_PADRAO);
+  try{ Object.assign(c, JSON.parse(recuperar(SOM) || "{}") || {}); }catch(e){}
+  return somConf = c;
+}
+lerSom();
+addEventListener("storage", e => { if(e.key === SOM){ lerSom(); pintarSom(); } });
 const fmtSeg = n => String(n).replace(".", ",") + " s";
 function pintarSom(){
   if(!$("#som-vol")) return;
@@ -3825,10 +3834,42 @@ function tocarAlarme(segundos){
     o.start(ini); o.stop(ini + 0.21);
   }
 }
+/* =========================================================
+   VERSÃO NOVA
+   A aba do escritório fica aberta dias a fio e seguia rodando o
+   código velho depois de cada publicação (foi assim que o alarme
+   continuou com o som antigo). A cada 5 minutos, e ao voltar para
+   a aba, confere se o index.html publicado mudou. Mudou: recarrega
+   sozinho se ninguém estiver mexendo; senão oferece o botão.
+   ========================================================= */
+let assinaturaApp = null, avisouVersao = false;
+async function assinaturaPublicada(){
+  const t = await (await fetch(location.pathname + "?_=" + Date.now(), { cache: "no-store" })).text();
+  let h = 0;
+  for(let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0;
+  return t.length + ":" + h;
+}
+const mexendo = () => !!(abertoId || editando || document.querySelector("dialog[open]") ||
+  (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)));
+async function conferirVersao(){
+  if(location.protocol === "file:") return;
+  try{
+    const a = await assinaturaPublicada();
+    if(!assinaturaApp){ assinaturaApp = a; return; }
+    if(a === assinaturaApp) return;
+    if(!mexendo()){ location.reload(); return; }
+    if(!avisouVersao){ avisouVersao = true;
+      recado("Tem versão nova do Pátio", { rotulo: "Atualizar", fazer: () => location.reload() }); }
+  }catch(e){ /* sem rede: tenta na próxima */ }
+}
+conferirVersao();
+setInterval(conferirVersao, 5 * 60 * 1000);
+document.addEventListener("visibilitychange", () => { if(!document.hidden) conferirVersao(); });
+
 /* tocar no aviso com o Pátio já aberto: o sw.js manda abrir a ficha */
 if("serviceWorker" in navigator){
   navigator.serviceWorker.addEventListener("message", e => {
-    if(e.data && e.data.tocar){ tocarAlarme(e.data.tocar === "longo" ? somConf.atraso : somConf.antes); return; }
+    if(e.data && e.data.tocar){ lerSom(); tocarAlarme(e.data.tocar === "longo" ? somConf.atraso : somConf.antes); return; }
     const id = e.data && e.data.abrir;
     if(id && dados.veiculos.some(v => v.id === id)){ trocarAba("patio"); abrir(id); }
   });
