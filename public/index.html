@@ -316,6 +316,12 @@ h1{margin:0;font-size:2rem;font-weight:540;letter-spacing:-0.036em;line-height:1
 .cab-toque{flex:1;display:flex;align-items:center;gap:.625rem;background:none;border:0;
   cursor:pointer;color:inherit;padding:0;text-align:left;min-width:0}
 .cab-toque .qt{margin-left:auto}
+.arquivar-todos{flex-shrink:0;font:inherit;font-size:.75rem;font-weight:500;cursor:pointer;
+  color:inherit;background:rgba(255,255,255,.55);border:1px solid rgba(0,0,0,.12);
+  border-radius:var(--pilula);padding:.3125rem .75rem;white-space:nowrap;
+  transition:background 150ms var(--saida)}
+.arquivar-todos:hover{background:rgba(255,255,255,.85)}
+.arquivar-todos:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
 .cab-toque .seta{width:1.125rem;height:1.125rem;flex-shrink:0;
   fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
   transition:transform 200ms var(--saida)}
@@ -2209,9 +2215,6 @@ html[data-papel="leitura"] #bloco-avisos{display:none}
       <button class="filtro" aria-pressed="false" data-f="acao">Requer ação</button>
       <button class="filtro" aria-pressed="false" data-f="Entregue">Entregues</button>
       <button class="filtro" aria-pressed="false" data-f="arquivo">Arquivo</button>
-      <!-- só aparece no filtro Entregues, para quem edita: arquiva de uma vez
-           o que a lista está mostrando (respeita busca, seguradora e cidade) -->
-      <button class="filtro arquivar-todos oculto" id="arquivar-todos" type="button">Arquivar todos</button>
       <select class="selecao" id="sel-seg" aria-label="Filtrar por seguradora"></select>
       <select class="selecao" id="sel-cidade" aria-label="Filtrar por cidade de destino"></select>
       <!-- "Ordem:" em toda opção porque o seletor fechado mostra só a
@@ -3234,7 +3237,7 @@ async function alternarArquivo(id){
    o lote; o Desfazer devolve cada um ao estado de antes (null ou false),
    então quem estava na regra dos 30 dias volta para a regra. */
 async function arquivarTodos(){
-  if(soLeitura || filtro !== "Entregue") return;
+  if(soLeitura || filtro === "arquivo") return;
   const lote = filtrados().filter(v => v.status === "Entregue" && !arquivado(v));
   if(!lote.length) return;
   const antes = lote.map(v => ({ id: v.id, arquivado: v.arquivado === undefined ? null : v.arquivado }));
@@ -4578,11 +4581,6 @@ function pintarPatio(){
   pintarSeguradoras();
   pintarCidades();
   let l = filtrados();
-  const bArq = $("#arquivar-todos");
-  if(bArq && bArq.dataset.conf !== "1"){
-    bArq.classList.toggle("oculto", soLeitura || filtro !== "Entregue" || !l.length);
-    bArq.textContent = "Arquivar todos (" + l.length + ")";
-  }
   const alvo = $("#lista-patio");
   if(!dados.veiculos.length){
     alvo.innerHTML = '<div class="vazio"><p>Nenhum veículo no pátio ainda.</p>'+
@@ -4612,7 +4610,13 @@ function pintarPatio(){
       '<button class="cab-toque" data-fechar="'+esc(s)+'" aria-expanded="'+(!fechado)+'">'+
         '<h2>'+s+'</h2><span class="qt">'+g.length+'</span>'+
         '<svg class="seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'+
-      '</button></div>'+
+      '</button>'+
+      /* na faixa dos entregues: arquiva de uma vez o que ela está mostrando
+         (respeita busca, seguradora e cidade). Fora do botão de recolher,
+         para o toque não abrir e fechar o grupo junto. */
+      (s === "Entregue" && filtro !== "arquivo" && !soLeitura
+        ? '<button class="arquivar-todos" id="arquivar-todos" type="button">Arquivar todos</button>' : '')+
+      '</div>'+
       '<div class="grade'+(primeiraPintura?" entrando":"")+'">'+g.map(cartao).join("")+'</div></div>';
   }).join("");
   primeiraPintura = false;
@@ -7913,7 +7917,7 @@ document.addEventListener("click", e => {
   const aba = e.target.closest(".aba");      if(aba){ trocarAba(aba.dataset.aba); return; }
   const ir  = e.target.closest("[data-ir]"); if(ir){ trocarAba(ir.dataset.ir); return; }
   const arqT = e.target.closest("#arquivar-todos");
-  if(arqT){ pedeConfirmacao(arqT, "Confirmar: arquivar " + filtrados().filter(v => !arquivado(v)).length + "?", arquivarTodos); return; }
+  if(arqT){ pedeConfirmacao(arqT, "Confirmar: arquivar " + filtrados().filter(v => v.status === "Entregue" && !arquivado(v)).length + "?", arquivarTodos); return; }
   const f   = e.target.closest(".filtro");
   if(f){
     filtro = f.dataset.f;
