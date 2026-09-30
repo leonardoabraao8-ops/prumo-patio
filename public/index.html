@@ -2457,8 +2457,9 @@ html[data-papel="leitura"] #bloco-avisos{display:none}
       <div id="bloco-avisos">
       <h3 class="grupo-conf">Avisos de agendamento</h3>
       <p class="dica-conf">Notificação neste aparelho 30, 15 e 5 minutos antes de cada saída de base ou
-        agendamento fora de base com hora marcada — mesmo com o Pátio fechado. Vale para quem é editor.
-        Ative em cada celular ou computador que deve tocar.</p>
+        agendamento fora de base com hora marcada — mesmo com o Pátio fechado. Se passar da hora e ninguém
+        puser em rota, avisa de novo a cada 30 minutos. Com o Pátio aberto numa aba, toca um alarme
+        (3 s antes da hora, 5 s no atraso). Vale para quem é editor. Ative em cada celular ou computador que deve tocar.</p>
       <p class="dica-conf" id="avisos-estado"></p>
       <div class="acoes">
         <button class="btn btn-p" id="avisos-ligar">Ativar neste aparelho</button>
@@ -3645,9 +3646,42 @@ if($("#avisos-ligar")){
   $("#avisos-desligar").onclick = desativarAvisos;
   $("#avisos-teste").onclick = () => testarAvisos(false);
 }
+/* Alarme dos avisos. O navegador não deixa a notificação escolher o som,
+   então com o Pátio aberto em alguma aba é ela que toca: bipes alternados,
+   altos, por 3 s (antes da hora) ou 5 s (agendamento atrasado).
+   O Chrome só libera áudio depois de um clique ou tecla na página — o
+   contexto é criado no primeiro toque e fica pronto para os avisos. */
+let somCtx = null;
+function prepararSom(){
+  try{
+    if(!somCtx) somCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(somCtx.state === "suspended") somCtx.resume();
+  }catch(e){}
+}
+["pointerdown", "keydown"].forEach(t => addEventListener(t, prepararSom, { capture: true, passive: true }));
+function tocarAlarme(segundos){
+  prepararSom();
+  if(!somCtx) return;
+  const t0 = somCtx.currentTime + 0.05, vol = somCtx.createGain();
+  vol.gain.value = 0.9;
+  vol.connect(somCtx.destination);
+  /* 4 bipes por segundo, alternando dois tons, como alarme de viatura */
+  for(let i = 0; i < segundos * 4; i++){
+    const o = somCtx.createOscillator(), g = somCtx.createGain(), ini = t0 + i * 0.25;
+    o.type = "square";
+    o.frequency.value = i % 2 ? 1320 : 990;
+    g.gain.setValueAtTime(0, ini);
+    g.gain.linearRampToValueAtTime(1, ini + 0.01);
+    g.gain.setValueAtTime(1, ini + 0.18);
+    g.gain.linearRampToValueAtTime(0, ini + 0.2);
+    o.connect(g); g.connect(vol);
+    o.start(ini); o.stop(ini + 0.21);
+  }
+}
 /* tocar no aviso com o Pátio já aberto: o sw.js manda abrir a ficha */
 if("serviceWorker" in navigator){
   navigator.serviceWorker.addEventListener("message", e => {
+    if(e.data && e.data.tocar){ tocarAlarme(e.data.tocar === "longo" ? 5 : 3); return; }
     const id = e.data && e.data.abrir;
     if(id && dados.veiculos.some(v => v.id === id)){ trocarAba("patio"); abrir(id); }
   });
