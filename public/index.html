@@ -2480,13 +2480,27 @@ html[data-papel="leitura"] #bloco-avisos{display:none}
       <h3 class="grupo-conf">Avisos de agendamento</h3>
       <p class="dica-conf">Notificação neste aparelho 30, 15 e 5 minutos antes de cada saída de base ou
         agendamento fora de base com hora marcada — mesmo com o Pátio fechado. Se passar da hora e ninguém
-        puser em rota, avisa de novo a cada 30 minutos. Com o Pátio aberto numa aba, toca um alarme
-        (1,5 s antes da hora, 2,5 s no atraso). Vale para quem é editor. Ative em cada celular ou computador que deve tocar.</p>
+        puser em rota, avisa de novo a cada 30 minutos. Com o Pátio aberto numa aba, toca o alarme
+        abaixo. Vale para quem é editor. Ative em cada celular ou computador que deve tocar.</p>
       <p class="dica-conf" id="avisos-estado"></p>
       <div class="acoes">
         <button class="btn btn-p" id="avisos-ligar">Ativar neste aparelho</button>
         <button class="btn btn-s oculto" id="avisos-teste">Enviar teste</button>
         <button class="btn btn-s oculto" id="avisos-desligar">Desativar neste aparelho</button>
+      </div>
+      <!-- som é deste aparelho: o computador da base pode querer alto, o celular baixo -->
+      <div class="reguas" id="reguas-som" style="margin-top:.875rem">
+        <label class="regua"><span>Volume do alarme <b id="rot-som-vol"></b></span>
+          <input type="range" id="som-vol" min="0" max="100" step="5"></label>
+        <label class="regua"><span>Duração antes da hora <b id="rot-som-antes"></b></span>
+          <input type="range" id="som-antes" min="0.5" max="6" step="0.5"></label>
+        <label class="regua"><span>Duração no atraso <b id="rot-som-atraso"></b></span>
+          <input type="range" id="som-atraso" min="0.5" max="10" step="0.5"></label>
+        <div class="acoes">
+          <button class="btn btn-s" id="som-ouvir-antes">Ouvir antes da hora</button>
+          <button class="btn btn-s" id="som-ouvir-atraso">Ouvir atraso</button>
+          <button class="btn btn-s" id="som-padrao">Voltar ao padrão</button>
+        </div>
       </div>
       </div>
 
@@ -3760,9 +3774,30 @@ if($("#avisos-ligar")){
 }
 /* Alarme dos avisos. O navegador não deixa a notificação escolher o som,
    então com o Pátio aberto em alguma aba é ela que toca: bipes alternados,
-   por 1,5 s (antes da hora) ou 2,5 s (agendamento atrasado).
+   com volume e duração ajustáveis em Ajustes.
    O Chrome só libera áudio depois de um clique ou tecla na página — o
    contexto é criado no primeiro toque e fica pronto para os avisos. */
+/* volume e duração do alarme, guardados neste aparelho */
+const SOM = "prumo-som-avisos-v1";
+const SOM_PADRAO = { vol: 70, antes: 1.5, atraso: 2.5 };
+let somConf = Object.assign({}, SOM_PADRAO);
+try{ Object.assign(somConf, JSON.parse(recuperar(SOM) || "{}") || {}); }catch(e){}
+const fmtSeg = n => String(n).replace(".", ",") + " s";
+function pintarSom(){
+  if(!$("#som-vol")) return;
+  $("#som-vol").value = somConf.vol;       $("#rot-som-vol").textContent = somConf.vol + "%";
+  $("#som-antes").value = somConf.antes;   $("#rot-som-antes").textContent = fmtSeg(somConf.antes);
+  $("#som-atraso").value = somConf.atraso; $("#rot-som-atraso").textContent = fmtSeg(somConf.atraso);
+}
+if($("#som-vol")){
+  [["som-vol","vol"],["som-antes","antes"],["som-atraso","atraso"]].forEach(([id, k]) => {
+    $("#"+id).oninput = e => { somConf[k] = Number(e.target.value); guardar(SOM, JSON.stringify(somConf)); pintarSom(); };
+  });
+  $("#som-ouvir-antes").onclick = () => tocarAlarme(somConf.antes);
+  $("#som-ouvir-atraso").onclick = () => tocarAlarme(somConf.atraso);
+  $("#som-padrao").onclick = () => { somConf = Object.assign({}, SOM_PADRAO); guardar(SOM, JSON.stringify(somConf)); pintarSom(); recado("Alarme de volta ao padrão"); };
+  pintarSom();
+}
 let somCtx = null;
 function prepararSom(){
   try{
@@ -3773,9 +3808,9 @@ function prepararSom(){
 ["pointerdown", "keydown"].forEach(t => addEventListener(t, prepararSom, { capture: true, passive: true }));
 function tocarAlarme(segundos){
   prepararSom();
-  if(!somCtx) return;
+  if(!somCtx || !somConf.vol || !segundos) return;
   const t0 = somCtx.currentTime + 0.05, vol = somCtx.createGain();
-  vol.gain.value = 0.63;          /* era 0,9: 30% mais baixo a pedido */
+  vol.gain.value = somConf.vol / 100 * 0.9;   /* 100% = o máximo que ainda soa limpo */
   vol.connect(somCtx.destination);
   /* 4 bipes por segundo, alternando dois tons, como alarme de viatura */
   for(let i = 0; i < Math.round(segundos * 4); i++){
@@ -3793,7 +3828,7 @@ function tocarAlarme(segundos){
 /* tocar no aviso com o Pátio já aberto: o sw.js manda abrir a ficha */
 if("serviceWorker" in navigator){
   navigator.serviceWorker.addEventListener("message", e => {
-    if(e.data && e.data.tocar){ tocarAlarme(e.data.tocar === "longo" ? 2.5 : 1.5); return; }
+    if(e.data && e.data.tocar){ tocarAlarme(e.data.tocar === "longo" ? somConf.atraso : somConf.antes); return; }
     const id = e.data && e.data.abrir;
     if(id && dados.veiculos.some(v => v.id === id)){ trocarAba("patio"); abrir(id); }
   });
