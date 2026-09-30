@@ -952,7 +952,7 @@ html[data-papel="leitura"] .tira-foto{display:none}
   color:inherit;font-size:.875rem;font-weight:700;text-decoration:underline;
   text-underline-offset:.1875rem;flex-shrink:0}
 /* confirmação no próprio botão, no lugar da caixa cinza do navegador */
-.btn.confirmando,.arquivar.confirmando{background:var(--vermelho);color:#fff;border-color:transparent}
+.btn.confirmando,.arquivar.confirmando,.arquivar-todos.confirmando{background:var(--vermelho);color:#fff;border-color:transparent}
 
 /* no celular a tarja sobe: embaixo à direita agora tem o botão de registrar */
 @media (max-width:47.99rem){
@@ -2209,6 +2209,9 @@ html[data-papel="leitura"] #bloco-avisos{display:none}
       <button class="filtro" aria-pressed="false" data-f="acao">Requer ação</button>
       <button class="filtro" aria-pressed="false" data-f="Entregue">Entregues</button>
       <button class="filtro" aria-pressed="false" data-f="arquivo">Arquivo</button>
+      <!-- só aparece no filtro Entregues, para quem edita: arquiva de uma vez
+           o que a lista está mostrando (respeita busca, seguradora e cidade) -->
+      <button class="filtro arquivar-todos oculto" id="arquivar-todos" type="button">Arquivar todos</button>
       <select class="selecao" id="sel-seg" aria-label="Filtrar por seguradora"></select>
       <select class="selecao" id="sel-cidade" aria-label="Filtrar por cidade de destino"></select>
       <!-- "Ordem:" em toda opção porque o seletor fechado mostra só a
@@ -3226,6 +3229,35 @@ async function alternarArquivo(id){
     recado(guardar ? (v.placa||"Veículo") + " arquivado" : (v.placa||"Veículo") + " de volta ao pátio",
       { fazer: () => voltarArquivo(id, antes) });
   }catch(err){ recado("Não salvou: " + err.message); }
+}
+/* Arquivar todos os entregues que a lista mostra agora. Um PATCH só para
+   o lote; o Desfazer devolve cada um ao estado de antes (null ou false),
+   então quem estava na regra dos 30 dias volta para a regra. */
+async function arquivarTodos(){
+  if(soLeitura || filtro !== "Entregue") return;
+  const lote = filtrados().filter(v => v.status === "Entregue" && !arquivado(v));
+  if(!lote.length) return;
+  const antes = lote.map(v => ({ id: v.id, arquivado: v.arquivado === undefined ? null : v.arquivado }));
+  try{
+    await api("veiculos?id=in.(" + lote.map(v => v.id).join(",") + ")",
+      { method: "PATCH", headers: { "Prefer": "return=minimal" }, body: JSON.stringify({ arquivado: true }) });
+    lote.forEach(v => v.arquivado = true);
+    pintar();
+    recado(lote.length + (lote.length > 1 ? " veículos arquivados" : " veículo arquivado"),
+      { fazer: () => desarquivarLote(antes) });
+  }catch(err){ recado("Não arquivou: " + err.message); }
+}
+async function desarquivarLote(antes){
+  try{
+    for(const val of [null, false]){
+      const ids = antes.filter(a => a.arquivado === val).map(a => a.id);
+      if(!ids.length) continue;
+      await api("veiculos?id=in.(" + ids.join(",") + ")",
+        { method: "PATCH", headers: { "Prefer": "return=minimal" }, body: JSON.stringify({ arquivado: val }) });
+      dados.veiculos.forEach(v => { if(ids.includes(v.id)) v.arquivado = val; });
+    }
+    pintar(); recado("Desfeito");
+  }catch(err){ recado("Não desfez: " + err.message); }
 }
 async function voltarArquivo(id, antes){
   const v = dados.veiculos.find(x => x.id === id);
@@ -4546,6 +4578,11 @@ function pintarPatio(){
   pintarSeguradoras();
   pintarCidades();
   let l = filtrados();
+  const bArq = $("#arquivar-todos");
+  if(bArq && bArq.dataset.conf !== "1"){
+    bArq.classList.toggle("oculto", soLeitura || filtro !== "Entregue" || !l.length);
+    bArq.textContent = "Arquivar todos (" + l.length + ")";
+  }
   const alvo = $("#lista-patio");
   if(!dados.veiculos.length){
     alvo.innerHTML = '<div class="vazio"><p>Nenhum veículo no pátio ainda.</p>'+
@@ -5859,7 +5896,7 @@ function irAoCartao(id){
     termo = ""; const bu = $("#busca"); if(bu) bu.value = "";
     segSel = ""; cidadeSel = "";
     filtro = arquivado(v) ? "arquivo" : "todos";
-    document.querySelectorAll(".filtro").forEach(f => f.setAttribute("aria-pressed", String(f.dataset.f === filtro)));
+    document.querySelectorAll(".filtro[data-f]").forEach(f => f.setAttribute("aria-pressed", String(f.dataset.f === filtro)));
     pintarPatio();
     c = document.querySelector('#lista-patio .cartao[data-id="'+id+'"]');
     if(!c) return;
@@ -7875,10 +7912,12 @@ function medirTopo(){
 document.addEventListener("click", e => {
   const aba = e.target.closest(".aba");      if(aba){ trocarAba(aba.dataset.aba); return; }
   const ir  = e.target.closest("[data-ir]"); if(ir){ trocarAba(ir.dataset.ir); return; }
+  const arqT = e.target.closest("#arquivar-todos");
+  if(arqT){ pedeConfirmacao(arqT, "Confirmar: arquivar " + filtrados().filter(v => !arquivado(v)).length + "?", arquivarTodos); return; }
   const f   = e.target.closest(".filtro");
   if(f){
     filtro = f.dataset.f;
-    document.querySelectorAll(".filtro").forEach(c => c.setAttribute("aria-pressed", String(c === f)));
+    document.querySelectorAll(".filtro[data-f]").forEach(c => c.setAttribute("aria-pressed", String(c === f)));
     pintarPatio(); return;
   }
   const zap = e.target.closest("[data-zap]");
