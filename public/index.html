@@ -6464,7 +6464,7 @@ function lerChamado(bruto){
     }
     return partes.join(" ").replace(/\s*\/\/\/\s*/g, " — ").trim();
   }
-  achado.origem = rotulo("lugar de assistencia","local de origem","endereco de coleta","local da coleta") ||
+  achado.origem = rotulo("lugar de assistencia","local de origem","endereco de coleta","local da coleta","origem","coletar em") ||
     bloco("lugar de assistencia") || bloco("local de origem");
 
   /* Placa: rótulo primeiro. Sem rótulo, o formato sozinho engana — "GOL 2014"
@@ -6477,12 +6477,19 @@ function lerChamado(bruto){
   };
   achado.placa = formatoPlaca(rotulo("placa"));
   /* "Matricula EWN8G** (Pendente de validar)": placa incompleta, fica marcada */
-  /* lido do texto cru: as linhas perdem os asteriscos (são negrito no WhatsApp) */
-  const mm = texto.match(/matr[ií]cula\s*[:\-]?\s*([A-Za-z]{3}[\s\-]?[0-9A-Za-z*]{1,4})/i);
-  if(!achado.placa && mm && /\d/.test(mm[1])){
-    const bruto = mm[1].toUpperCase();
-    achado.placa = /\*/.test(bruto) ? bruto.replace(/[^A-Z0-9*]/g,"") : (formatoPlaca(bruto) || bruto.replace(/[^A-Z0-9]/g,""));
-  }
+  /* Placa incompleta vem com asterisco no lugar do que falta ("EWN8G**",
+     "ERS5G****"). Lida do texto cru, porque as linhas perdem os asteriscos
+     (no WhatsApp eles são negrito). Fica sempre com 7 posições. */
+  const placaParcial = bruto => {
+    const up = String(bruto).toUpperCase().replace(/[^A-Z0-9*]/g, "");
+    const sabido = up.replace(/\*/g, "");
+    if(sabido.length >= 7) return formatoPlaca(sabido) || sabido.slice(0, 7);
+    return sabido + "*".repeat(7 - sabido.length);
+  };
+  const mm = texto.match(/(?:matr[ií]cula|placa)\s*\**\s*[:\-]?\s*\**\s*([A-Za-z]{3}[\s\-]?[0-9A-Za-z]{1,4}\*+)/i) ||
+             texto.match(/matr[ií]cula\s*[:\-]?\s*([A-Za-z]{3}[\s\-]?[0-9A-Za-z*]{1,4})/i);
+  if(!achado.placa && mm && /\d/.test(mm[1]))
+    achado.placa = /\*/.test(mm[1]) ? placaParcial(mm[1]) : (formatoPlaca(mm[1]) || mm[1].toUpperCase().replace(/[^A-Z0-9]/g,""));
   if(!achado.placa){
     const alto = texto.toUpperCase();
     const re = /\b([A-Z]{3})([\s\-]?)(\d[A-Z0-9]\d{2})\b/g;
@@ -6532,7 +6539,11 @@ function lerChamado(bruto){
   }
   if(!achado.ano){ const a = rotulo("ano"); if(/^(19|20)\d\d$/.test(a)) achado.ano = a; }
   if(!achado.cor){
-    const bruta = rotulo("cor") || (CORES_COMUNS.find(x => inteiro.includes(" " + x)) || "");
+    /* cor solta só vale fora de endereço: "Jardim Rio Branco" não é carro branco */
+    const semEndereco = " " + semAcento(linhas.filter(l =>
+      !/\b(rua|r\.|av|av\.|avenida|rod|rodovia|estrada|travessa|praca|alameda|jardim|vila|parque|bairro|destino|origem|endereco|lugar)\b/
+        .test(semAcento(l))).join(" "));
+    const bruta = rotulo("cor") || (CORES_COMUNS.find(x => semEndereco.includes(" " + x)) || "");
     const c = CORES_COMUNS.find(x => semAcento(bruta) === x) || bruta.toLowerCase();
     if(c) achado.cor = c.charAt(0).toUpperCase() + c.slice(1);
   }
@@ -6548,8 +6559,10 @@ function lerChamado(bruto){
      o campo continua livre e o app entende as duas formas. */
   const nomeRegistro = s => s && (s.registraComo || s.nome ||
     s.chave.charAt(0).toUpperCase() + s.chave.slice(1));
-  achado.seguradora = rotulo("seguradora","seguro","cliente","contratante") ||
-    nomeRegistro(seg) || "";
+  /* "MAPFRE E BB AUTO + GOLD" é o contrato; no pátio vale o nome que o app conhece */
+  const segRot = rotulo("seguradora","seguro","contratante","contrato") || solto("contrato");
+  const segDoRot = segRot && SEGURADORAS.find(s => bate(semAcento(segRot), s.chave));
+  achado.seguradora = segDoRot ? nomeRegistro(segDoRot) : (segRot || nomeRegistro(seg) || "");
 
   achado.guincheiro = rotulo("guincheiro","prestador","motorista","reboquista","socorrista");
 
