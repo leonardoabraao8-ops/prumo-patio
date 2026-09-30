@@ -2160,6 +2160,12 @@ html[data-papel="leitura"] .lj-tira,html[data-papel="leitura"] .lj-add{display:n
 .mot-ficha{display:flex;align-items:center;gap:.5rem;margin-top:.625rem;font-size:.875rem}
 .mot-ficha button{margin-left:auto}
 html[data-papel="leitura"] #p-motorista{display:none}
+/* cartão achado pelo vínculo: pisca um contorno e some sozinho */
+.cartao.destaque{animation:destaque-cartao 2.4s var(--saida) both}
+@keyframes destaque-cartao{
+  0%,35%{box-shadow:0 0 0 3px var(--azul),0 10px 28px -10px rgba(0,0,0,.35);transform:scale(1.015)}
+  100%{box-shadow:0 0 0 0 transparent;transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.cartao.destaque{animation:none;outline:3px solid var(--azul);outline-offset:2px}}
 </style>
 </head>
 <body>
@@ -4085,7 +4091,8 @@ function pintarIndicadores(){
     '<div class="ind i-acao"><b>'+acao+'</b><span>requer ação</span></div>'+
     '<div class="ind i-pt"><b>'+pt+'</b><span>perda total</span></div>'+
     (coletas ? '<div class="ind"><b>'+coletas+'</b><span>fora de base</span></div>' : '');
-  $("#n-patio").textContent = dados.veiculos.filter(v => !arquivado(v)).length;
+  /* o número da aba é o mesmo do "no pátio": entregue e fora de base não estão lá */
+  $("#n-patio").textContent = ativos.filter(v => !arquivado(v)).length;
   $("#n-agenda").textContent = dados.veiculos.filter(v => v.data && v.status !== "Entregue").length;
 }
 /* barra das abas: X e largura em molas separadas (§3) */
@@ -5673,6 +5680,34 @@ function limpar(){
   $("#form-sub").textContent = "Só a placa é obrigatória. O resto pode ser completado depois, quando chegar a ordem de serviço.";
   $("#btn-salvar").textContent = "Registrar entrada";
   modoForm("patio");
+}
+/* Rola até o cartão e acende. Se ele estiver escondido por filtro, busca
+   ou grupo recolhido, desfaz só o que for preciso para ele aparecer. */
+function irAoCartao(id){
+  const v = dados.veiculos.find(x => x.id === id);
+  if(!v) return;
+  if($("#p-patio").classList.contains("oculto")) trocarAba("patio");
+  let c = document.querySelector('#lista-patio .cartao[data-id="'+id+'"]');
+  if(!c){
+    termo = ""; const bu = $("#busca"); if(bu) bu.value = "";
+    segSel = ""; cidadeSel = "";
+    filtro = arquivado(v) ? "arquivo" : "todos";
+    document.querySelectorAll(".filtro").forEach(f => f.setAttribute("aria-pressed", String(f.dataset.f === filtro)));
+    pintarPatio();
+    c = document.querySelector('#lista-patio .cartao[data-id="'+id+'"]');
+    if(!c) return;
+  }
+  const grupo = c.closest(".grupo");
+  if(grupo && grupo.classList.contains("fechado")){
+    const cab = grupo.querySelector("[data-fechar]");
+    if(cab) cab.click();
+  }
+  requestAnimationFrame(() => {
+    c.scrollIntoView({ behavior: REDUZIR ? "auto" : "smooth", block: "center" });
+    c.classList.remove("destaque"); void c.offsetWidth; c.classList.add("destaque");
+    setTimeout(() => c.classList.remove("destaque"), 2600);
+    c.focus({ preventScroll: true });
+  });
 }
 /* abre o cadastro já como coleta direta, presa a um veículo do pátio */
 function novaColetaCom(v){
@@ -7682,7 +7717,11 @@ document.addEventListener("click", e => {
   const zap = e.target.closest("[data-zap]");
   if(zap){ copiarOS(zap.dataset.zap, zap); return; }   // não abre a ficha junto
   const outro = e.target.closest("[data-abre]");
-  if(outro){ abrir(outro.dataset.abre); return; }
+  if(outro){
+    /* no cartão, leva até o cartão do outro; dentro da ficha, abre a ficha dele */
+    if(outro.closest(".painel")) abrir(outro.dataset.abre); else irAoCartao(outro.dataset.abre);
+    return;
+  }
   const fc = e.target.closest("[data-foto-cartao]");
   if(fc){
     const v = dados.veiculos.find(x => x.id === fc.dataset.fotoCartao);
