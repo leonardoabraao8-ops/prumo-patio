@@ -2162,10 +2162,17 @@ html[data-papel="leitura"] .lj-tira,html[data-papel="leitura"] .lj-add{display:n
 .mot-op[aria-pressed="true"]{background:var(--rotulo);color:var(--fundo);border-color:var(--rotulo)}
 .mot-op:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
 .mot-dlg .acoes{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.875rem}
+.ent-end{border:1px solid var(--separador);border-radius:calc(var(--raio) * .6);padding:.625rem .75rem;margin-bottom:.625rem;
+  font-size:.8125rem;line-height:1.4}
+.ent-end small{display:block;font-size:.6875rem;letter-spacing:.04em;text-transform:uppercase;color:var(--rotulo-3);margin-bottom:.125rem}
+.ent-end.sem{color:var(--rotulo-3);font-style:italic}
+.ent-ops{display:flex;flex-wrap:wrap;gap:.375rem;margin-bottom:.625rem}
+.mot-dlg .erro-campo{color:var(--vermelho);font-size:.75rem;margin:.25rem 0 0}
 .c-motorista{display:flex;align-items:center;gap:.375rem;margin-top:.375rem;font-size:.75rem;font-weight:480;color:var(--rotulo)}
 .c-motorista svg{width:.9375rem;height:.9375rem;flex-shrink:0;color:var(--rotulo-3)}
 .mot-ficha{display:flex;align-items:center;gap:.5rem;margin-top:.625rem;font-size:.875rem}
 .mot-ficha button{margin-left:auto}
+.mot-ficha svg{width:1.125rem;height:1.125rem;flex-shrink:0;color:var(--rotulo-3)}
 html[data-papel="leitura"] #p-motorista{display:none}
 /* cartão achado pelo vínculo: pisca um contorno e some sozinho */
 .cartao.destaque{animation:destaque-cartao 2.4s var(--saida) both}
@@ -3563,6 +3570,66 @@ function escolherMotorista(v, atual){
     dlgMot.showModal();
   });
 }
+/* =========================================================
+   CONFIRMAR ENTREGA
+   Passar para Entregue pede quem recebeu e se foi no endereço
+   da ficha — é o que responde "quem pegou o carro?" semanas
+   depois, quando a seguradora pergunta. Mesmo molde do diálogo
+   do motorista. Devolve {recebedor, local} ou null (desistiu);
+   local vazio = entregue no endereço da ficha.
+   ========================================================= */
+let dlgEnt = null;
+function confirmarEntrega(v){
+  return new Promise(resolve => {
+    if(!dlgEnt){
+      dlgEnt = document.createElement("dialog");
+      dlgEnt.className = "mot-dlg";
+      dlgEnt.setAttribute("aria-labelledby", "ent-tit");
+      document.body.appendChild(dlgEnt);
+    }
+    const end = [v.destino, v.cidade && !semAcento(v.destino).includes(semAcento(v.cidade)) ? v.cidade : ""]
+      .filter(Boolean).join(" — ");
+    dlgEnt.innerHTML =
+      '<h2 id="ent-tit">Confirmar entrega</h2>'+
+      '<p>'+esc(nomeCurto(v))+(v.motorista ? ' · levado por '+esc(v.motorista) : '')+'</p>'+
+      '<div class="campo largo"><label for="ent-nome">Quem recebeu</label>'+
+        '<input id="ent-nome" type="text" placeholder="Nome de quem recebeu" autocomplete="off" value="'+esc(v.recebedor || "")+'">'+
+        '<p class="erro-campo oculto" id="ent-nome-erro">Informe quem recebeu</p></div>'+
+      '<div class="ent-end'+(end ? '' : ' sem')+'"><small>Endereço da ficha</small>'+(end ? esc(end) : 'A ficha não tem endereço de destino')+'</div>'+
+      '<div class="ent-ops">'+
+        (end ? '<button type="button" class="mot-op" data-end="ficha" aria-pressed="true">Entregue neste endereço</button>' : '')+
+        '<button type="button" class="mot-op" data-end="outro" aria-pressed="'+(!end)+'">'+(end ? 'Foi em outro endereço' : 'Informar onde foi entregue')+'</button></div>'+
+      '<div class="campo largo'+(end ? ' oculto' : '')+'" id="ent-outro-campo"><label for="ent-outro">Onde foi entregue</label>'+
+        '<input id="ent-outro" type="text" placeholder="Endereço da entrega" autocomplete="off">'+
+        '<p class="erro-campo oculto" id="ent-outro-erro">Informe o endereço da entrega</p></div>'+
+      '<div class="acoes"><button type="button" class="btn btn-s" id="ent-cancelar">Cancelar</button>'+
+        '<button type="button" class="btn btn-p" id="ent-ok">Confirmar entrega</button></div>';
+    let modo = end ? "ficha" : "outro", feito = false;
+    const fim = val => { if(feito) return; feito = true; dlgEnt.close(); resolve(val); };
+    dlgEnt.querySelectorAll("[data-end]").forEach(b => b.onclick = () => {
+      modo = b.dataset.end;
+      dlgEnt.querySelectorAll("[data-end]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      $("#ent-outro-campo").classList.toggle("oculto", modo !== "outro");
+      if(modo === "outro") $("#ent-outro").focus();
+    });
+    const confirmar = () => {
+      const nome = $("#ent-nome").value.trim(), outro = $("#ent-outro").value.trim();
+      $("#ent-nome-erro").classList.toggle("oculto", !!nome);
+      $("#ent-outro-erro").classList.toggle("oculto", modo !== "outro" || !!outro);
+      if(!nome){ $("#ent-nome").focus(); return; }
+      if(modo === "outro" && !outro){ $("#ent-outro").focus(); return; }
+      fim({ recebedor: nome, local: modo === "outro" ? outro : "" });
+    };
+    dlgEnt.querySelectorAll("input").forEach(i => i.onkeydown = e => { if(e.key === "Enter"){ e.preventDefault(); confirmar(); } });
+    $("#ent-ok").onclick = confirmar;
+    $("#ent-cancelar").onclick = () => fim(null);
+    dlgEnt.onclose = () => fim(null);
+    dlgEnt.showModal();
+    $("#ent-nome").focus();
+  });
+}
+const obsEntrega = r => "Recebido por " + r.recebedor + (r.local ? " — em outro endereço: " + r.local : " — no endereço da ficha");
+
 /* põe em rota: o veículo e os agendamentos fora de base que seguem com ele */
 async function porEmRota(v, motorista, comEvento, obsExtra){
   const campos = { status: "Em rota" };
@@ -4253,7 +4320,7 @@ function exportarDetalhado(){
   const linhas = [["Placa","Modelo","Ano","Cor","Seguradora","Central","Nº assistência",
     "Condição","Perda total","Rodas/câmbio travado","Avarias","Guincheiro",
     "Status","Entrada na base","Dias na base","Destino","Ponto exato","Cidade","Data agendada","Hora",
-    "Saída realizada","Tentativas sem sucesso","Fotos","Checklist","Observações","Nota","Fora de base","Origem","Vai junto com","Motorista da saída","Histórico"]];
+    "Saída realizada","Tentativas sem sucesso","Fotos","Checklist","Observações","Nota","Fora de base","Origem","Vai junto com","Motorista da saída","Recebido por","Entregue em outro endereço","Histórico"]];
   l.forEach(v => {
     const m = marcaSeguradora(v.seguradora);
     const c = m.central && CENTRAIS[m.central];
@@ -4269,7 +4336,7 @@ function exportarDetalhado(){
       v.destino, v.ponto, v.cidade, fmtData(v.data), fmtHora(v.hora),
       v.saida ? fmtCarimbo(v.saida) : "", tentativas(v), lerFotos(v).length,
       sim(v.checklist), v.obs, v.nota || "", sim(v.direta), v.origem || "",
-      ((v.junto && dados.veiculos.find(x => x.id === v.junto)) || {}).placa || "", v.motorista || "", hist ]);
+      ((v.junto && dados.veiculos.find(x => x.id === v.junto)) || {}).placa || "", v.motorista || "", v.recebedor || "", v.entrega_local || "", hist ]);
   });
   baixarCSV("patio-prumo-detalhado_" + carimboArquivo() + ".csv", linhas);
   recado(l.length + (l.length > 1 ? " veículos exportados" : " veículo exportado"));
@@ -4483,6 +4550,7 @@ function cartao(v){
     '<div class="c-modelo">'+esc(v.modelo||"Modelo não informado")+
       (nf?'<span class="marca-foto">▣ '+nf+'</span>':'')+'</div>'+
     (v.status === "Em rota" && v.motorista ? '<div class="c-motorista">'+ICONE_CAMINHAO+'<span>Em rota com '+esc(v.motorista)+'</span></div>' : '')+
+    (v.status === "Entregue" && v.recebedor ? '<div class="c-motorista"><span>Recebido por '+esc(v.recebedor)+(v.entrega_local ? ' · outro endereço' : '')+'</span></div>' : '')+
     elo+
     tira+
     marca+
@@ -5205,6 +5273,8 @@ function conteudoPainel(v){
         (v.status === "Em rota" ? '<div class="mot-ficha">'+ICONE_CAMINHAO+'<span>'+
           (v.motorista ? 'Levando: <b>'+esc(v.motorista)+'</b>' : 'Motorista não informado')+'</span>'+
           '<button type="button" class="btn btn-s" id="p-motorista">'+(v.motorista ? 'Trocar' : 'Informar')+'</button></div>' : '')+
+        (v.status === "Entregue" && v.recebedor ? '<div class="mot-ficha"><span>Recebido por <b>'+esc(v.recebedor)+'</b>'+
+          (v.entrega_local ? ' em outro endereço: '+esc(v.entrega_local) : ' no endereço da ficha')+'</span></div>' : '')+
       '</div></div>'+
       '<div class="bloco"><h3>Chamado</h3><dl class="dl">'+
         li("Seguradora",v.seguradora)+
@@ -5286,7 +5356,7 @@ function conteudoPainel(v){
 const ROTULO_CAMPO = { placa:"placa", modelo:"modelo", ano:"ano", cor:"cor", seguradora:"seguradora",
   assistencia:"nº da assistência", condicao:"condição", guincheiro:"guincheiro", pt:"perda total",
   travado:"travado", avarias:"avarias", status:"situação", destino:"destino", cidade:"cidade",
-  data:"data de saída", hora:"hora", obs:"observações", nota:"nota", motorista:"motorista da saída", origem:"origem", direta:"fora de base", junto:"vai junto com", entrada:"entrada", saida:"saída",
+  data:"data de saída", hora:"hora", obs:"observações", nota:"nota", motorista:"motorista da saída", recebedor:"quem recebeu", entrega_local:"local da entrega", origem:"origem", direta:"fora de base", junto:"vai junto com", entrada:"entrada", saida:"saída",
   arquivado:"arquivado", tipo:"tipo do evento", quando:"quando", resultado:"resultado", motivo:"motivo" };
 function valorLegivel(campo, v){
   if(v === null || v === "") return "vazio";
@@ -5432,8 +5502,20 @@ function ligarPainel(v){
       catch(err){ e.target.value = v.status; recado("Não salvou: " + err.message); }
       return;
     }
+    if(e.target.value === "Entregue" && v.status !== "Entregue"){
+      const r = await confirmarEntrega(v);
+      if(!r){ e.target.value = v.status; return; }               /* desistiu: volta como estava */
+      const agora = new Date().toISOString();
+      try{
+        Object.assign(v, await atualizarVeiculo(v.id, { status: "Entregue", saida: agora,
+          recebedor: r.recebedor, entrega_local: r.local || null }));
+        dados.eventos.unshift(await inserirEvento({ veiculo: v.id, quando: agora, tipo: "Entrega concluída",
+          resultado: "Sucesso", motivo: "", obs: obsEntrega(r) }));
+        pintar(); repintarPainel(v); recado("Entregue — recebido por " + r.recebedor);
+      }catch(err){ e.target.value = v.status; recado("Não salvou: " + err.message); }
+      return;
+    }
     const campos = { status: e.target.value };
-    if(campos.status === "Entregue" && !v.saida) campos.saida = new Date().toISOString();
     try{ Object.assign(v, await atualizarVeiculo(v.id, campos)); pintar(); recado("Status atualizado"); }
     catch(err){ recado("Não salvou: " + err.message); }
   };
@@ -5525,7 +5607,13 @@ function ligarPainel(v){
       return;
     }
     const campos = {};
-    if(tipo === "Entrega concluída"){ campos.status = "Entregue"; campos.saida = ev.quando; }
+    if(tipo === "Entrega concluída"){
+      const r = await confirmarEntrega(v);
+      if(!r) return;
+      campos.status = "Entregue"; campos.saida = ev.quando;
+      campos.recebedor = r.recebedor; campos.entrega_local = r.local || null;
+      ev.obs = [ev.obs, obsEntrega(r)].filter(Boolean).join(" — ");
+    }
     else if(tipo === "Tentativa de entrega") campos.status = "Entrega rejeitada";
     else if(tipo === "Saída para entrega") campos.status = "Em rota";
     else if(tipo === "Retorno à base") campos.status = "Retornou à base";
@@ -7958,6 +8046,7 @@ document.addEventListener("keydown", e => {
      não se deixa o mesmo Esc derrubar a ficha que está atrás dela. */
   if(dlgNota && dlgNota.open) return;
   if(dlgMot && dlgMot.open) return;
+  if(dlgEnt && dlgEnt.open) return;
   if(visorAberto()){
     if(e.key === "Escape"){ e.preventDefault(); fecharVisor(); }
     else if(e.key === "ArrowLeft"){ e.preventDefault(); andarVisor(-1); }
