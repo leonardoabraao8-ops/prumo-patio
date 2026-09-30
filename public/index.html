@@ -3587,6 +3587,22 @@ async function pintarAvisos(){
   teste.classList.toggle("oculto", !ativo);
   desligar.classList.toggle("oculto", !ativo);
 }
+async function gravarInscricao(sub){
+  const j = sub.toJSON();
+  await api("push_inscricoes?on_conflict=endpoint", { method: "POST",
+    headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, aparelho: nomeDoAparelho() }) });
+}
+/* o aparelho pode achar que está inscrito enquanto o banco não tem a linha
+   (gravação que falhou, navegador que trocou a inscrição): a cada abertura
+   do Pátio, quem já deu permissão tem a inscrição regravada em silêncio */
+async function conferirInscricao(){
+  try{
+    if(soLeitura || !suportaPush() || Notification.permission !== "granted") return;
+    const sub = await inscricaoAtual();
+    if(sub) await gravarInscricao(sub);
+  }catch(e){ /* sem rede agora: tenta de novo na próxima abertura */ }
+}
 async function ativarAvisos(){
   const b = $("#avisos-ligar");
   b.disabled = true;
@@ -3597,10 +3613,7 @@ async function ativarAvisos(){
     await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription() ||
       await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytesDaChave(VAPID_PUBLICA) });
-    const j = sub.toJSON();
-    await api("push_inscricoes?on_conflict=endpoint", { method: "POST",
-      headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
-      body: JSON.stringify({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, aparelho: nomeDoAparelho() }) });
+    await gravarInscricao(sub);
     recado("Avisos ativados neste aparelho");
     testarAvisos(true);
   }catch(err){ recado("Não ativou: " + err.message); }
@@ -7984,6 +7997,7 @@ async function iniciarApp(){
   await carregarPreferencias();
   pintar();
   pintarAvisos();
+  conferirInscricao();
   /* volta o que estava sendo digitado e a aba em que a pessoa estava */
   const voltou = restaurarRascunho();
   const aba = recuperar(ABA_ATIVA);
