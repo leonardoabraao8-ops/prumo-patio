@@ -2240,6 +2240,7 @@ html[data-papel="leitura"] #p-motorista{display:none}
         <button type="button" class="tipo-op" data-tipo="direta" aria-pressed="false">Fora de base</button>
       </div>
       <input type="checkbox" id="f-direta" hidden>
+      <input type="hidden" id="f-servico">
 
       <fieldset>
         <legend>Colar chamado</legend>
@@ -3539,7 +3540,9 @@ function linhaJunto(v){
   if(!outros.length) return "";
   return "🔗 *Segue no mesmo guincho:* " + outros.map(x => (x.modelo || "veículo") + " " + (x.placa || "")).join(", ");
 }
-const endCompleto = v => v.destino ? destinoLegivel(v.destino) + (v.cidade ? " - " + v.cidade : "") : "";
+/* a cidade só entra se o endereço ainda não disser qual é ("…, São Vicente/SP - São Vicente") */
+const comCidade = (end, cidade) => end + (cidade && !semAcento(end).includes(semAcento(cidade)) ? " - " + cidade : "");
+const endCompleto = v => v.destino ? comCidade(destinoLegivel(v.destino), v.cidade) : "";
 function linhasVeiculo(L, v){
   L.push("*Veículo:* " + (v.modelo || "não informado") + (v.ano ? " | " + v.ano : "") + (v.cor ? " | " + v.cor : ""));
   L.push("*Placa:* " + (v.placa || "—") + (/\*/.test(v.placa||"") ? " (confirmar na coleta)" : ""));
@@ -3553,14 +3556,43 @@ function linkDoDestino(v){
   const ponto = coordenadaEm(v.destino);
   return ponto ? mapa(ponto.lat + "," + ponto.lon) : mapa(endCompleto(v));
 }
+/* Mesmo desenho da OS do Gerador de Mensagens, que é a que os guincheiros
+   já conhecem: título do serviço, chamado, cliente, veículo, problema,
+   observação, origem/destino com mapa e agendamento. Cliente e telefone
+   moram nas observações ("Cliente: Nome · telefone") e sobem para cima. */
 function montarOSColeta(v){
-  const L = ["*AGENDAMENTO FORA DE BASE*", ""];
-  linhasVeiculo(L, v);
-  if(v.origem){ L.push(""); L.push("📍 *Coletar em:* " + v.origem); L.push(mapa(v.origem)); }
-  if(v.destino){ L.push(""); L.push("📍 *Entregar em:* " + endCompleto(v)); L.push(linkDoDestino(v)); }
+  let cliente = "", fone = "";
+  const resto = String(v.obs || "").split("\n").map(l => l.trim()).filter(l => {
+    const mc = l.match(/^cliente\s*:\s*(.+)$/i);
+    if(mc){
+      const [nome, tel] = mc[1].split(/\s*·\s*/);
+      cliente = nome || ""; fone = fone || tel || ""; return false;
+    }
+    const mt = l.match(/^telefone\s*:\s*(.+)$/i);
+    if(mt){ fone = mt[1]; return false; }
+    return l && !/^origem\s*:/i.test(l);          /* a origem já tem linha própria */
+  });
+  const L = ["*" + (v.servico ? v.servico.toUpperCase() : "AGENDAMENTO FORA DE BASE") + "*"];
+  if(v.assistencia) L.push("*Assistência:* " + v.assistencia);
+  if(v.seguradora)  L.push("*Seguro:* " + v.seguradora);
+  if(cliente || fone){
+    L.push("");
+    if(cliente) L.push("*Cliente:* " + cliente);
+    if(fone)    L.push("*Telefone:* " + fone);
+  }
+  L.push("");
+  L.push("*Veículo:* " + (v.modelo || "não informado") + (v.ano ? " | " + v.ano : "") + (v.cor ? " | " + v.cor : ""));
+  L.push("*Placa:* " + (v.placa || "—"));
+  const alertas = [];
+  if(v.condicao && v.condicao !== "Outro") alertas.push("*Problema:* " + v.condicao);
+  if(v.pt)      alertas.push("⚠️ *PERDA TOTAL*");
+  if(v.travado) alertas.push("⚠️ Rodas ou câmbio travado — necessário prancha");
+  if(alertas.length){ L.push(""); alertas.forEach(a => L.push(a)); }
+  if(resto.length){ L.push(""); L.push("*Obs:* " + resto.join("\n")); }
+  if(v.origem){ L.push(""); L.push("📍 *Origem:* " + v.origem); L.push("🗺️ " + mapa(v.origem)); }
+  if(v.destino){ if(!v.origem) L.push(""); L.push("📍 *Destino:* " + endCompleto(v)); L.push("🗺️ " + linkDoDestino(v)); }
   if(v.data){ L.push(""); L.push("⏰ *Agendamento:* " + fmtData(v.data) + (v.hora ? " às " + fmtHora(v.hora) : "")); }
   if(linhaJunto(v)){ L.push(""); L.push(linhaJunto(v)); }
-  if(v.obs){ L.push(""); L.push("*Obs:* " + v.obs); }
   L.push(""); L.push("📋 Enviar checklist imediatamente após a entrega do veículo.");
   return L.join("\n");
 }
@@ -3582,7 +3614,7 @@ function montarOSSimples(v){
   L.push(mapa("R. Saturnino de Brito, 50 - Marapé, Santos SP"));
   if(v.destino){
     const legivel = destinoLegivel(v.destino);
-    const completo = legivel + (v.cidade ? " - " + v.cidade : "");
+    const completo = comCidade(legivel, v.cidade);
     const ponto = coordenadaEm(v.destino);
     L.push("");
     L.push("📍 *Destino:* " + completo);
@@ -5447,7 +5479,7 @@ const CAMPOS = { placa:"f-placa", modelo:"f-modelo", ano:"f-ano", cor:"f-cor", e
   seguradora:"f-seg", assistencia:"f-assist", condicao:"f-cond", guincheiro:"f-guinch",
   pt:"f-pt", travado:"f-trava", avarias:"f-avarias", destino:"f-dest", cidade:"f-cidade",
   data:"f-data", hora:"f-hora", ponto:"f-ponto", os:"f-os", obs:"f-obs",
-  direta:"f-direta", origem:"f-origem", junto:"f-junto" };
+  direta:"f-direta", origem:"f-origem", junto:"f-junto", servico:"f-servico" };
 /* o campo datetime-local trabalha em hora local; o banco guarda em UTC */
 function paraCampo(iso){
   if(!iso) return "";
@@ -6552,6 +6584,13 @@ function lerChamado(bruto){
     }
     return partes.join(" ").replace(/\s*\/\/\/\s*/g, " — ").trim();
   }
+  /* tipo do serviço: a primeira linha em negrito e maiúsculas do gerador
+     ("*REBOQUE PARA AUTOMÓVEIS*") ou o rótulo "Serviço:" do portal */
+  const primeira = (bruto.split("\n").map(l => l.trim()).find(Boolean) || "");
+  const titulo = primeira.match(/^\*([^*]{4,60})\*$/);
+  const servRot = rotulo("servico","tipo de servico");
+  achado.servico = titulo && titulo[1] === titulo[1].toUpperCase() && !/SA[IÍ]DA DE BASE|FORA DE BASE/.test(titulo[1])
+    ? titulo[1].trim() : (servRot ? servRot.toUpperCase() : "");
   achado.origem = rotulo("lugar de assistencia","local de origem","endereco de coleta","local da coleta","origem","coletar em") ||
     bloco("lugar de assistencia") || bloco("local de origem");
 
