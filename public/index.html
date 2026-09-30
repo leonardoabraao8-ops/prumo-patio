@@ -3865,7 +3865,7 @@ function tocarAlarme(segundos, volume){
    a aba, confere se o index.html publicado mudou. Mudou: recarrega
    sozinho se ninguém estiver mexendo; senão oferece o botão.
    ========================================================= */
-let assinaturaApp = null, avisouVersao = false;
+let assinaturaApp = null, avisouVersao = false, candidata = null, vezesCandidata = 0;
 async function assinaturaPublicada(){
   const t = await (await fetch(location.pathname + "?_=" + Date.now(), { cache: "no-store" })).text();
   let h = 0;
@@ -3874,20 +3874,32 @@ async function assinaturaPublicada(){
 }
 const mexendo = () => !!(abertoId || editando || document.querySelector("dialog[open]") ||
   (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)));
+/* Durante uma publicação a Cloudflare serve ora a versão velha, ora a nova
+   — recarregar na primeira diferença virou recarga em laço. Agora a versão
+   nova precisa aparecer em três conferências seguidas (15 min), e o
+   recarregar automático acontece no máximo uma vez a cada 30 minutos. */
+const RECARGA = "prumo-recarga-auto";
 async function conferirVersao(){
   if(location.protocol === "file:") return;
   try{
     const a = await assinaturaPublicada();
     if(!assinaturaApp){ assinaturaApp = a; return; }
-    if(a === assinaturaApp) return;
-    if(!mexendo()){ location.reload(); return; }
+    if(a === assinaturaApp){ candidata = null; vezesCandidata = 0; return; }
+    if(a !== candidata){ candidata = a; vezesCandidata = 1; return; }
+    if(++vezesCandidata < 3) return;
+    let ultima = 0;
+    try{ ultima = Number(sessionStorage.getItem(RECARGA)) || 0; }catch(e){}
+    if(!mexendo() && Date.now() - ultima > 30 * 60 * 1000){
+      try{ sessionStorage.setItem(RECARGA, String(Date.now())); }catch(e){}
+      location.reload(); return;
+    }
     if(!avisouVersao){ avisouVersao = true;
       recado("Tem versão nova do Pátio", { rotulo: "Atualizar", fazer: () => location.reload() }); }
   }catch(e){ /* sem rede: tenta na próxima */ }
 }
 conferirVersao();
 setInterval(conferirVersao, 5 * 60 * 1000);
-document.addEventListener("visibilitychange", () => { if(!document.hidden) conferirVersao(); });
+
 
 /* tocar no aviso com o Pátio já aberto: o sw.js manda abrir a ficha */
 if("serviceWorker" in navigator){
