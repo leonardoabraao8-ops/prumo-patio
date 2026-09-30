@@ -4477,7 +4477,7 @@ function pintarIndicadores(){
   const acao = doPatio.filter(v => requerAcao(v) && !arquivado(v)).length;
   const pt = ativos.filter(v => v.pt).length;
   const hoje = doPatio.filter(v => v.data === hojeISO() && v.status !== "Entregue").length;
-  const coletas = dados.veiculos.filter(v => v.direta && v.status !== "Entregue" && !arquivado(v)).length;
+  const coletas = dados.veiculos.filter(v => v.direta && v.status !== "Entregue" && v.status !== "Em rota" && !arquivado(v)).length;
   $("#indicadores").innerHTML =
     (soLeitura ? '<span class="marca-leitura">Somente leitura</span>' : '')+
     '<div class="ind"><b>'+ativos.length+'</b><span>no pátio</span></div>'+
@@ -4782,7 +4782,9 @@ function pintarPatio(){
   if(!l.length){ alvo.innerHTML = '<div class="vazio"><p>Nenhum veículo com esse filtro.</p></div>'; return; }
   /* coletas diretas em andamento têm faixa própria, no topo, por horário;
      entregue volta para a regra de todo mundo */
-  const emColeta = v => v.direta && v.status !== "Entregue";
+  /* a faixa é de quem ainda espera coleta: posto em rota, vai para o grupo
+     Em rota junto com os outros; entregue, para Entregue */
+  const emColeta = v => v.direta && v.status !== "Entregue" && v.status !== "Em rota";
   const coletas = l.filter(emColeta).sort((a,b) =>
     ((a.data||"9999")+(a.hora||"")).localeCompare((b.data||"9999")+(b.hora||"")));
   const fechadoC = gruposFechados.has("__coletas");
