@@ -2481,14 +2481,14 @@ html[data-papel="leitura"] #bloco-avisos{display:none}
       <p class="dica-conf">Notificação neste aparelho 30, 15 e 5 minutos antes de cada saída de base ou
         agendamento fora de base com hora marcada — mesmo com o Pátio fechado. Se passar da hora e ninguém
         puser em rota, avisa de novo a cada 30 minutos. Com o Pátio aberto numa aba, toca o alarme
-        abaixo. Vale para quem é editor. Ative em cada celular ou computador que deve tocar.</p>
+        abaixo — o volume e a duração valem para todos os aparelhos. Vale para quem é editor. Ative em cada celular ou computador que deve tocar.</p>
       <p class="dica-conf" id="avisos-estado"></p>
       <div class="acoes">
         <button class="btn btn-p" id="avisos-ligar">Ativar neste aparelho</button>
         <button class="btn btn-s oculto" id="avisos-teste">Enviar teste</button>
         <button class="btn btn-s oculto" id="avisos-desligar">Desativar neste aparelho</button>
       </div>
-      <!-- som é deste aparelho: o computador da base pode querer alto, o celular baixo -->
+      <!-- uma configuração só, no banco: vale para todo aparelho que recebe avisos -->
       <div class="reguas" id="reguas-som" style="margin-top:.875rem">
         <label class="regua"><span>Volume do alarme <b id="rot-som-vol"></b></span>
           <input type="range" id="som-vol" min="0" max="100" step="5"></label>
@@ -3777,20 +3777,15 @@ if($("#avisos-ligar")){
    com volume e duração ajustáveis em Ajustes.
    O Chrome só libera áudio depois de um clique ou tecla na página — o
    contexto é criado no primeiro toque e fica pronto para os avisos. */
-/* volume e duração do alarme, guardados neste aparelho */
-const SOM = "prumo-som-avisos-v1";
+/* Volume e duração do alarme: UMA configuração no banco (avisos_config),
+   igual em todo aparelho. Antes era por aparelho, e cada computador ou
+   perfil do Chrome inscrito tocava com o seu próprio ajuste — mudar num
+   não mudava o que tocava no outro. O servidor manda o ajuste junto com
+   cada aviso; aqui fica só uma cópia para os botões de ouvir. */
+const SOM = "prumo-som-avisos-v2";
 const SOM_PADRAO = { vol: 70, antes: 1.5, atraso: 2.5 };
 let somConf = Object.assign({}, SOM_PADRAO);
-/* relê do aparelho toda vez: quem toca o alarme costuma ser outra aba do
-   Pátio, aberta antes do ajuste — com a cópia antiga na memória, ela
-   tocava a configuração velha */
-function lerSom(){
-  const c = Object.assign({}, SOM_PADRAO);
-  try{ Object.assign(c, JSON.parse(recuperar(SOM) || "{}") || {}); }catch(e){}
-  return somConf = c;
-}
-lerSom();
-addEventListener("storage", e => { if(e.key === SOM){ lerSom(); pintarSom(); } });
+try{ Object.assign(somConf, JSON.parse(recuperar(SOM) || "{}") || {}); }catch(e){}
 const fmtSeg = n => String(n).replace(".", ",") + " s";
 function pintarSom(){
   if(!$("#som-vol")) return;
@@ -3798,13 +3793,35 @@ function pintarSom(){
   $("#som-antes").value = somConf.antes;   $("#rot-som-antes").textContent = fmtSeg(somConf.antes);
   $("#som-atraso").value = somConf.atraso; $("#rot-som-atraso").textContent = fmtSeg(somConf.atraso);
 }
+async function carregarSom(){
+  try{
+    const r = await api("avisos_config?id=eq.1&select=volume,antes,atraso");
+    if(r && r[0]){
+      somConf = { vol: r[0].volume, antes: Number(r[0].antes), atraso: Number(r[0].atraso) };
+      guardar(SOM, JSON.stringify(somConf)); pintarSom();
+    }
+  }catch(e){ /* sem tabela ou sem rede: fica o que tinha */ }
+}
+let gravaSom = null;
+function salvarSom(){
+  guardar(SOM, JSON.stringify(somConf)); pintarSom();
+  clearTimeout(gravaSom);
+  gravaSom = setTimeout(async () => {
+    try{
+      await api("avisos_config?id=eq.1", { method: "PATCH", headers: { "Prefer": "return=minimal" },
+        body: JSON.stringify({ volume: somConf.vol, antes: somConf.antes, atraso: somConf.atraso, atualizado: new Date().toISOString() }) });
+      recado("Alarme salvo para todos os aparelhos");
+    }catch(err){ recado("Não salvou o alarme: " + err.message); }
+  }, 600);
+}
 if($("#som-vol")){
   [["som-vol","vol"],["som-antes","antes"],["som-atraso","atraso"]].forEach(([id, k]) => {
-    $("#"+id).oninput = e => { somConf[k] = Number(e.target.value); guardar(SOM, JSON.stringify(somConf)); pintarSom(); };
+    $("#"+id).oninput = e => { somConf[k] = Number(e.target.value); pintarSom(); };
+    $("#"+id).onchange = e => { somConf[k] = Number(e.target.value); salvarSom(); };
   });
-  $("#som-ouvir-antes").onclick = () => tocarAlarme(somConf.antes);
-  $("#som-ouvir-atraso").onclick = () => tocarAlarme(somConf.atraso);
-  $("#som-padrao").onclick = () => { somConf = Object.assign({}, SOM_PADRAO); guardar(SOM, JSON.stringify(somConf)); pintarSom(); recado("Alarme de volta ao padrão"); };
+  $("#som-ouvir-antes").onclick = () => tocarAlarme(somConf.antes, somConf.vol);
+  $("#som-ouvir-atraso").onclick = () => tocarAlarme(somConf.atraso, somConf.vol);
+  $("#som-padrao").onclick = () => { somConf = Object.assign({}, SOM_PADRAO); salvarSom(); };
   pintarSom();
 }
 let somCtx = null;
@@ -3815,11 +3832,17 @@ function prepararSom(){
   }catch(e){}
 }
 ["pointerdown", "keydown"].forEach(t => addEventListener(t, prepararSom, { capture: true, passive: true }));
-function tocarAlarme(segundos){
+/* um alarme por vez: dois avisos no mesmo minuto não somam volume nem
+   emendam um no outro */
+let alarmeAte = 0;
+function tocarAlarme(segundos, volume){
   prepararSom();
-  if(!somCtx || !somConf.vol || !segundos) return;
+  if(volume == null) volume = somConf.vol;
+  if(!somCtx || !volume || !segundos) return;
+  if(somCtx.currentTime < alarmeAte) return;
+  alarmeAte = somCtx.currentTime + segundos + 0.1;
   const t0 = somCtx.currentTime + 0.05, vol = somCtx.createGain();
-  vol.gain.value = somConf.vol / 100 * 0.9;   /* 100% = o máximo que ainda soa limpo */
+  vol.gain.value = volume / 100 * 0.9;   /* 100% = o máximo que ainda soa limpo */
   vol.connect(somCtx.destination);
   /* 4 bipes por segundo, alternando dois tons, como alarme de viatura */
   for(let i = 0; i < Math.round(segundos * 4); i++){
@@ -3869,7 +3892,11 @@ document.addEventListener("visibilitychange", () => { if(!document.hidden) confe
 /* tocar no aviso com o Pátio já aberto: o sw.js manda abrir a ficha */
 if("serviceWorker" in navigator){
   navigator.serviceWorker.addEventListener("message", e => {
-    if(e.data && e.data.tocar){ lerSom(); tocarAlarme(e.data.tocar === "longo" ? somConf.atraso : somConf.antes); return; }
+    if(e.data && e.data.tocar){
+      const c = e.data.som || somConf;          /* o ajuste vem do servidor junto com o aviso */
+      tocarAlarme(e.data.tocar === "longo" ? Number(c.atraso) : Number(c.antes), Number(c.vol));
+      return;
+    }
     const id = e.data && e.data.abrir;
     if(id && dados.veiculos.some(v => v.id === id)){ trocarAba("patio"); abrir(id); }
   });
@@ -8251,6 +8278,7 @@ async function iniciarApp(){
   pintar();
   pintarAvisos();
   conferirInscricao();
+  carregarSom();
   /* volta o que estava sendo digitado e a aba em que a pessoa estava */
   const voltou = restaurarRascunho();
   const aba = recuperar(ABA_ATIVA);

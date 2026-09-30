@@ -1,6 +1,6 @@
 // Avisos de agendamento do Pátio Prumo.
-// Antes da hora: 30, 15 e 5 minutos (toque curto, ~3 s).
-// Depois da hora, se ninguém pôs em rota: na hora e a cada 30 min (toque longo, ~5 s).
+// Antes da hora: 30, 15 e 5 minutos (toque curto).
+// Depois da hora, se ninguém pôs em rota: na hora e a cada 30 min (toque longo).
 // Chamado a cada minuto pelo pg_cron do próprio banco. Também aceita
 // { teste: endpoint } para o botão "Enviar teste" dos Ajustes.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -40,6 +40,12 @@ async function enviar(insc: Insc[], carga: Record<string, unknown>) {
 
 const hhmm = (h: string | null) => (h || "").slice(0, 5);
 
+// volume e duração do alarme vêm do banco (Ajustes), iguais em todo aparelho
+async function somAtual() {
+  const { data } = await db.from("avisos_config").select("volume,antes,atraso").eq("id", 1).maybeSingle();
+  return { vol: data?.volume ?? 70, antes: Number(data?.antes ?? 1.5), atraso: Number(data?.atraso ?? 2.5) };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   const { data: cfg, error: e1 } = await db.rpc("push_config");
@@ -55,7 +61,7 @@ Deno.serve(async (req) => {
     const n = await enviar(i as Insc[], {
       title: "Avisos do Pátio ligados",
       body: "Avisos 30, 15 e 5 min antes de cada agendamento, e a cada 30 min se passar da hora sem ninguém pôr em rota.",
-      tag: "teste", url: "/", alerta: "curto",
+      tag: "teste", url: "/", alerta: "curto", som: await somAtual(),
     });
     return json({ enviados: n });
   }
@@ -66,6 +72,7 @@ Deno.serve(async (req) => {
   if (e2) return json({ erro: e2.message }, 500);
   if (!devidos?.length) return json({ avisos: 0 });
   const { data: insc } = await db.rpc("inscricoes_editores");
+  const som = await somAtual();
 
   let avisos = 0;
   for (const v of devidos) {
@@ -90,7 +97,7 @@ Deno.serve(async (req) => {
     if (atrasado) corpoMsg = `Ninguém pôs em rota ainda. ${corpoMsg}`;
     await enviar(insc as Insc[], {
       title: titulo, body: corpoMsg, tag: `${v.id}-${v.marco}`, url: `/?v=${v.id}`,
-      alerta: atrasado ? "longo" : "curto",
+      alerta: atrasado ? "longo" : "curto", som,
       // atrasado fica na tela até alguém tocar
       insistente: atrasado,
     });

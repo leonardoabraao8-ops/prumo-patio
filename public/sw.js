@@ -30,7 +30,7 @@ self.addEventListener("push", e => {
     const janelas = (await self.clients.matchAll({ type: "window", includeUncontrolled: true }))
       .filter(j => new URL(j.url).origin === self.location.origin);
     const j = janelas.find(x => x.focused) || janelas.find(x => x.visibilityState === "visible") || janelas[0];
-    if (j) j.postMessage({ tocar: alerta });
+    if (j) j.postMessage({ tocar: alerta, som: d.som || null });
   })());
 });
 
