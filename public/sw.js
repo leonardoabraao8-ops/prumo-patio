@@ -3,12 +3,12 @@
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
 
-/* toque curto (~3 s) nos avisos de antes da hora, longo (~5 s) nos de atraso.
+/* toque curto (~1,5 s) nos avisos de antes da hora, longo (~2,5 s) nos de atraso.
    O navegador não deixa o aviso escolher o som: fora do Pátio toca o som do
    sistema; com o Pátio aberto em alguma aba, é ela que toca o alarme. */
 const VIBRA = {
-  curto: [600, 200, 600, 200, 600, 200, 600],
-  longo: [800, 200, 800, 200, 800, 200, 800, 200, 800, 200, 800]
+  curto: [500, 200, 500, 200, 100],
+  longo: [600, 200, 600, 200, 600, 200, 700]
 };
 self.addEventListener("push", e => {
   let d = {};
