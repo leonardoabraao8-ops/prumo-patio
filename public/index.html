@@ -2145,8 +2145,10 @@ body.imprimindo .c-fotos{display:none}
   font:inherit;font-size:.8125rem;font-weight:480;color:var(--rotulo-3)}
 .tipo-op[aria-pressed="true"]{background:var(--rotulo);color:var(--fundo)}
 .tipo-op:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
-#form-entrada[data-tipo="patio"] .so-direta,
-#form-entrada[data-tipo="direta"] .so-patio{display:none}
+/* sem marcação nenhuma também é entrada na base: a coleta só aparece
+   quando o formulário está de fato em "fora de base" */
+#form-entrada:not([data-tipo="direta"]) .so-direta,
+#form-entrada[data-tipo="direta"] .so-patio{display:none !important}
 .cartao.direta::before{background:repeating-linear-gradient(180deg,var(--rotulo-3) 0 6px,transparent 6px 11px);opacity:.55}
 .c-quando b{font-size:1.375rem}
 .c-junto{display:flex;align-items:center;gap:.375rem;margin-top:.375rem;font-size:.75rem;color:var(--rotulo);
@@ -2272,7 +2274,7 @@ html[data-papel="leitura"] #bloco-avisos{display:none}
   <section id="p-agenda" class="oculto"><div id="lista-agenda"></div></section>
 
   <section id="p-entrada" class="oculto">
-    <div class="folha" id="form-entrada">
+    <div class="folha" id="form-entrada" data-tipo="patio">
       <h2 id="form-titulo">Registrar entrada</h2>
       <p class="sub" id="form-sub">Só a placa é obrigatória. O resto pode ser completado depois, quando chegar a ordem de serviço.</p>
       <div class="tipo-reg" role="group" aria-label="Tipo de registro">
