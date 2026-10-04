@@ -1144,6 +1144,15 @@ html[data-papel="leitura"] .hist .linha:hover{background:none;box-shadow:none}
 .pino .em-rota::before{content:"";width:1rem;height:.5625rem;background:#fff;
   -webkit-mask:var(--caminhao) center/contain no-repeat;mask:var(--caminhao) center/contain no-repeat}
 .pino .em-rota ~ .marca-aprox{top:auto;bottom:.125rem}
+/* pinos no mesmo lugar: abrem em leque, cada placa ligada por um fio ao
+   ponto real. A caixa original do pino não pega clique, só a placa. */
+.pino.espalhado{pointer-events:none !important}
+.pino.espalhado .pino-interno{pointer-events:auto;transition:transform 180ms var(--saida)}
+.pino .pino-fio{position:absolute;left:37px;top:38px;height:2px;margin-top:-1px;transform-origin:0 50%;
+  background:var(--pino,#555);box-shadow:0 0 0 1px rgba(255,255,255,.7);pointer-events:none;border-radius:2px}
+.pino .pino-ponto{position:absolute;left:33px;top:34px;width:8px;height:8px;border-radius:99px;
+  background:var(--pino,#555);box-shadow:0 0 0 2px #fff,0 0 0 3px rgba(0,0,0,.45);pointer-events:none}
+.pino.espalhado .bico{visibility:hidden}
 /* a base é o único pino redondo: âncora do mapa, não é carga */
 .pino-base{background:none;border:0}
 .marca-base{display:block;width:2.375rem;height:2.375rem;border-radius:99px;
@@ -5004,7 +5013,10 @@ async function gravarPosicoes(cartoes, de, para){
    os vizinhos abrem espaço na mola (§4) */
 function arrastarGrupo(alca, cont){
   alca.addEventListener("pointerdown", inicio => {
-    const grupos = [...cont.querySelectorAll(".grupo")];
+    /* a faixa de fora de base não é um status: ficava na conta, e ao soltar
+       o nome dela tomava o lugar de um status de verdade — que sumia da tela
+       até recarregar a página */
+    const grupos = [...cont.querySelectorAll(".grupo:not(.g-coletas)")];
     if(grupos.length < 2) return;                 // um grupo só: nada a reordenar
     const grupo = alca.closest(".grupo");
     const de = grupos.indexOf(grupo);
@@ -5066,7 +5078,10 @@ function arrastarGrupo(alca, cont){
             nova.splice(para, 0, nova.splice(de, 1)[0]);
             const fila = nova.slice();
             /* só as fatias visíveis trocam de lugar; as escondidas ficam onde estavam */
-            ordemStatus = ordemStatus.map(s => visiveis.includes(s) ? fila.shift() : s);
+            ordemStatus = ordemStatus.map(s => visiveis.includes(s) ? fila.shift() : s)
+              .filter(s => STATUS.includes(s));
+            /* rede de segurança: nenhum status some da lista, aconteça o que for */
+            STATUS.forEach(s => { if(!ordemStatus.includes(s)) ordemStatus.push(s); });
             guardar(ORDEM_STATUS, JSON.stringify(ordemStatus));
             salvarPreferencias();
           }
@@ -7586,6 +7601,7 @@ function liberarArrasto(id){
   if(!m || soLeitura) return;
   m.closePopup();
   m.dragging.enable();
+  deslocarPino(m, 0, 0);            /* arrasta a placa onde ela está de verdade */
   const el = m.getElement();
   if(el) el.classList.add("movendo");
   recado("Arraste o pino até o lugar certo");
@@ -7593,7 +7609,75 @@ function liberarArrasto(id){
     m.dragging.disable();
     const e2 = m.getElement();
     if(e2) e2.classList.remove("movendo");
+    agendarEspalhar();
   });
+}
+/* =========================================================
+   PINOS SOBREPOSTOS
+   Dois carros para o mesmo endereço caíam um em cima do outro e só um
+   aparecia. A cada zoom, os pinos cujas placas se encostam na tela são
+   abertos em leque em volta do ponto, cada um com um fio até o lugar
+   real. O deslocamento é em pixels: ao aproximar o zoom, quem estava
+   só perto se separa sozinho e o leque desfaz.
+   ========================================================= */
+let esperaEspalhar = 0;
+function agendarEspalhar(){
+  cancelAnimationFrame(esperaEspalhar);
+  esperaEspalhar = requestAnimationFrame(espalharPinos);
+}
+function espalharPinos(){
+  if(!telaMapa) return;
+  const ms = Object.values(pinosPorId).filter(m => m.getElement() && telaMapa.hasLayer(m));
+  const pts = ms.map(m => telaMapa.latLngToLayerPoint(m.getLatLng()));
+  /* grupos: placas (74×38) que se encostam, por união transitiva */
+  const pai = ms.map((_, i) => i);
+  const raiz = i => pai[i] === i ? i : (pai[i] = raiz(pai[i]));
+  for(let i = 0; i < ms.length; i++) for(let j = i + 1; j < ms.length; j++){
+    if(Math.abs(pts[i].x - pts[j].x) < 70 && Math.abs(pts[i].y - pts[j].y) < 36) pai[raiz(i)] = raiz(j);
+  }
+  const grupos = {};
+  ms.forEach((m, i) => (grupos[raiz(i)] = grupos[raiz(i)] || []).push(i));
+  Object.values(grupos).forEach(idx => {
+    if(idx.length < 2 || idx.some(i => ms[i].dragging && ms[i].dragging.enabled())){
+      idx.forEach(i => deslocarPino(ms[i], 0, 0)); return;
+    }
+    const cx = idx.reduce((t, i) => t + pts[i].x, 0) / idx.length;
+    const cy = idx.reduce((t, i) => t + pts[i].y, 0) / idx.length;
+    /* ordem estável pela placa: o leque não embaralha a cada zoom */
+    idx.sort((a, b) => String(ms[a].prumo && ms[a].prumo.v.placa).localeCompare(String(ms[b].prumo && ms[b].prumo.v.placa)));
+    const n = idx.length;
+    /* raio que cabe as placas lado a lado em volta do círculo */
+    const r = Math.max(58, Math.ceil(n * 90 / (2 * Math.PI)));
+    idx.forEach((i, k) => {
+      const ang = -Math.PI / 2 + k * 2 * Math.PI / n;
+      const alvoX = cx + r * Math.cos(ang) * 1.25, alvoY = cy + r * Math.sin(ang) * .85;
+      deslocarPino(ms[i], alvoX - pts[i].x, alvoY - pts[i].y);
+    });
+  });
+}
+function deslocarPino(m, ox, oy){
+  const el = m.getElement();
+  if(!el) return;
+  const interno = el.querySelector(".pino-interno");
+  if(!interno) return;
+  let fio = el.querySelector(".pino-fio"), ponto = el.querySelector(".pino-ponto");
+  if(!ox && !oy){
+    el.classList.remove("espalhado");
+    interno.style.transform = "";
+    if(fio) fio.remove();
+    if(ponto) ponto.remove();
+    return;
+  }
+  el.classList.add("espalhado");
+  interno.style.transform = "translate(" + ox + "px," + oy + "px)";
+  if(!fio){ fio = document.createElement("span"); fio.className = "pino-fio"; el.insertBefore(fio, interno); }
+  if(!ponto){ ponto = document.createElement("span"); ponto.className = "pino-ponto"; el.insertBefore(ponto, interno); }
+  const cor = interno.style.getPropertyValue("--pino");
+  fio.style.setProperty("--pino", cor); ponto.style.setProperty("--pino", cor);
+  /* o fio vai do ponto real até a base da placa deslocada */
+  const len = Math.hypot(ox, oy - 2), ang = Math.atan2(oy - 2, ox);
+  fio.style.width = len + "px";
+  fio.style.transform = "rotate(" + ang + "rad)";
 }
 function pinoDe(v, aprox, ordem){
   const html = '<div class="pino-interno" style="--pino:' + corDoStatus(v.status) + '">' +
@@ -7719,6 +7803,8 @@ async function pintarMapa(){
       telaMapa.on("popupclose", () => telaMapa.scrollWheelZoom.enable());
       acertarFundoDoMapa();   /* monta a camada se houver chave, ou avisa que falta */
       camadaPinos = L.layerGroup().addTo(telaMapa);
+      camadaPinos.on("layeradd", agendarEspalhar);
+      telaMapa.on("zoomend viewreset", agendarEspalhar);
       telaMapa.on("popupopen", e => {
         const a = e.popup.getElement().querySelector("[data-ver]");
         if(a) a.onclick = ev => { ev.preventDefault(); abrir(a.dataset.ver); };
@@ -7771,6 +7857,7 @@ async function pintarMapa(){
         m.setPopupContent(balaoDe(v, ondeBase ? distanciaKm(ondeBase, [q.lat, q.lng]) : null));
         pintarViagem();              /* redesenha o pino mantendo o número da parada */
         if(!modoViagem) m.setIcon(pinoDe(v, false));
+        agendarEspalhar();
         recado("Posição de " + (v.placa || "veículo") + " corrigida e guardada");
       });
       camadaPinos.addLayer(m);
@@ -7788,7 +7875,7 @@ async function pintarMapa(){
     const enquadra = () => {
       const tudo = pontos.slice();
       if(ondeBase) tudo.push(ondeBase);
-      if(tudo.length) telaMapa.fitBounds(tudo, { padding:[50,50], maxZoom:13 });
+      if(tudo.length) telaMapa.fitBounds(tudo, { padding:[80,80], maxZoom:13 });
     };
     enquadra();
     estadoMapa(pontos.length + " no mapa" + (faltam.length ? " · localizando " + faltam.length + "…" : ""));
@@ -7915,6 +8002,7 @@ function pintarViagem(){
     const m = pinosPorId[id];
     if(!m || !m.prumo) return;
     m.setIcon(pinoDe(m.prumo.v, m.prumo.aprox, posicao[id]));
+    agendarEspalhar();
     if(modoViagem) m.closePopup();
   });
   if(!modoViagem) return;
