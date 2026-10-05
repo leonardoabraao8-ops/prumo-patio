@@ -59,6 +59,7 @@
   --b-rosa:#FFD9E7;
   --b-coral:#FFB9A6;
   --b-marinho:#221C4F;
+  --b-ceu:#CDE7F7;
   --b-marinho-tinta:#FFFFFF;
   --tinta-bloco:#000000;      /* texto sobre bloco de cor */
   /* semânticos: glifo, nunca superfície */
@@ -116,7 +117,7 @@ html[data-tema="escuro"]{
        versão profunda da mesma cor: a identidade permanece, o brilho não. */
     --b-lima:#2E3A12; --b-lilas:#26214F; --b-creme:#2E2619;
     --b-menta:#123A2C; --b-rosa:#3C1F2E; --b-coral:#48251A;
-    --b-marinho:#26205C; --b-marinho-tinta:#FFFFFF;
+    --b-marinho:#26205C; --b-marinho-tinta:#FFFFFF; --b-ceu:#173445;
     --tinta-bloco:#FFFFFF;
     --vidro:rgba(0,0,0,.88);
     --sombra-m:0 4px 16px rgba(0,0,0,.5);
@@ -133,7 +134,7 @@ html[data-tema="cinza"]{
     --separador:#C4C1B9; --separador-2:#D2CFC8; --preenchimento:#E4E2DC;
     --b-lima:#D3E278; --b-lilas:#D5CDF5; --b-creme:#EBE1D2;
     --b-menta:#BEE6D2; --b-rosa:#F5D0DE; --b-coral:#F5B09D;
-    --b-marinho:#221C4F; --b-marinho-tinta:#FFFFFF;
+    --b-marinho:#221C4F; --b-marinho-tinta:#FFFFFF; --b-ceu:#C3DEEF;
     --tinta-bloco:#141414;
     --vidro:rgba(220,218,212,.90);
     --sombra-m:0 4px 16px rgba(0,0,0,.10);
@@ -301,6 +302,7 @@ h1{margin:0;font-size:2rem;font-weight:540;letter-spacing:-0.036em;line-height:1
 .grupo[data-status="Na base"]           {--bloco:var(--c-na-base,var(--b-creme));--bloco-tinta:var(--t-na-base,var(--tinta-bloco))}
 .grupo[data-status="Saída agendada"]    {--bloco:var(--c-saida-agendada,var(--b-lilas));--bloco-tinta:var(--t-saida-agendada,var(--tinta-bloco))}
 .grupo[data-status="Em rota"]           {--bloco:var(--c-em-rota,var(--b-lima));--bloco-tinta:var(--t-em-rota,var(--tinta-bloco))}
+.grupo[data-status="Coletado"]          {--bloco:var(--c-coletado,var(--b-ceu));--bloco-tinta:var(--t-coletado,var(--tinta-bloco))}
 .grupo[data-status="Entregue"]          {--bloco:var(--c-entregue,var(--b-menta));--bloco-tinta:var(--t-entregue,var(--tinta-bloco))}
 .grupo[data-status="Entrega rejeitada"] {--bloco:var(--c-entrega-rejeitada,var(--b-coral));--bloco-tinta:var(--t-entrega-rejeitada,var(--tinta-bloco))}
 .grupo[data-status="Aguardando destino"]{--bloco:var(--c-aguardando-destino,var(--b-rosa));--bloco-tinta:var(--t-aguardando-destino,var(--tinta-bloco))}
@@ -2653,8 +2655,20 @@ const SUPABASE_URL = "https://tbdeoytkiqhzadtbuazs.supabase.co";
 const SUPABASE_KEY = "sb_publishable_uvgCHP3eaElSuhX7OEvPuw_gRywnPMs";
 /* ========================================================= */
 
-const STATUS = ["Na base","Saída agendada","Em rota","Entregue","Entrega rejeitada","Aguardando destino","Retornou à base"];
-const CLASSE = {"Na base":"s-base","Saída agendada":"s-agendada","Em rota":"s-rota","Entregue":"s-entregue",
+/* "Coletado" é só de agendamento fora de base: o guincho já pegou o carro
+   na origem e está levando ao destino */
+/* status que entraram no app depois de a pessoa ordenar os grupos entram
+   logo depois do vizinho de antes (Coletado depois de Em rota), não no fim */
+function completarOrdem(val){
+  STATUS.forEach((s, i) => {
+    if(val.includes(s)) return;
+    const antes = STATUS.slice(0, i).reverse().find(x => val.includes(x));
+    val.splice(antes ? val.indexOf(antes) + 1 : 0, 0, s);
+  });
+  return val;
+}
+const STATUS = ["Na base","Saída agendada","Em rota","Coletado","Entregue","Entrega rejeitada","Aguardando destino","Retornou à base"];
+const CLASSE = {"Na base":"s-base","Saída agendada":"s-agendada","Em rota":"s-rota","Coletado":"s-coletado","Entregue":"s-entregue",
   "Entrega rejeitada":"s-rejeitada","Aguardando destino":"s-aguardando","Retornou à base":"s-retornou"};
 const MOTIVOS = ["Oficina recusou por perda total","Local fechado","Endereço incorreto",
   "Sem responsável para receber","Pátio lotado","Oficina sem espaço","Documentação pendente","Outro"];
@@ -3676,6 +3690,7 @@ async function porEmRota(v, motorista, comEvento, obsExtra){
       obs: [obsExtra, motorista ? "Motorista: " + motorista : ""].filter(Boolean).join(" — ") }));
   }
   for(const c of coletasDe(v)){
+    if(c.status === "Coletado") continue;          /* já está no guincho: não volta para "Em rota" */
     if(c.status === "Em rota" && c.motorista === motorista) continue;
     Object.assign(c, await atualizarVeiculo(c.id, campos));
   }
@@ -4488,7 +4503,7 @@ function pintarIndicadores(){
   const acao = doPatio.filter(v => requerAcao(v) && !arquivado(v)).length;
   const pt = ativos.filter(v => v.pt).length;
   const hoje = doPatio.filter(v => v.data === hojeISO() && v.status !== "Entregue").length;
-  const coletas = dados.veiculos.filter(v => v.direta && v.status !== "Entregue" && v.status !== "Em rota" && !arquivado(v)).length;
+  const coletas = dados.veiculos.filter(v => v.direta && !["Entregue","Em rota","Coletado"].includes(v.status) && !arquivado(v)).length;
   $("#indicadores").innerHTML =
     (soLeitura ? '<span class="marca-leitura">Somente leitura</span>' : '')+
     '<div class="ind"><b>'+ativos.length+'</b><span>no pátio</span></div>'+
@@ -4686,6 +4701,7 @@ function cartao(v){
     '<div class="c-modelo">'+esc(v.modelo||"Modelo não informado")+
       (nf?'<span class="marca-foto">▣ '+nf+'</span>':'')+'</div>'+
     (v.status === "Em rota" && v.motorista ? '<div class="c-motorista">'+ICONE_CAMINHAO+'<span>Em rota com '+esc(v.motorista)+'</span></div>' : '')+
+    (v.status === "Coletado" ? '<div class="c-motorista">'+ICONE_CAMINHAO+'<span>Coletado'+(v.motorista ? ' — com '+esc(v.motorista) : '')+'</span></div>' : '')+
     (v.status === "Entregue" && v.recebedor ? '<div class="c-motorista"><span>Recebido por '+esc(v.recebedor)+(v.entrega_local ? ' · outro endereço' : '')+'</span></div>' : '')+
     elo+
     tira+
@@ -4773,7 +4789,7 @@ let ordemStatus = (function(){
       if(Array.isArray(a)){
         const val = a.filter(s => STATUS.includes(s));
         /* status que entraram no app depois vão para o fim, sem sumir */
-        STATUS.forEach(s => { if(!val.includes(s)) val.push(s); });
+        completarOrdem(val);
         return val;
       }
     }catch(e){}
@@ -4795,7 +4811,7 @@ function pintarPatio(){
      entregue volta para a regra de todo mundo */
   /* a faixa é de quem ainda espera coleta: posto em rota, vai para o grupo
      Em rota junto com os outros; entregue, para Entregue */
-  const emColeta = v => v.direta && v.status !== "Entregue" && v.status !== "Em rota";
+  const emColeta = v => v.direta && !["Entregue","Em rota","Coletado"].includes(v.status);
   const coletas = l.filter(emColeta).sort((a,b) =>
     ((a.data||"9999")+(a.hora||"")).localeCompare((b.data||"9999")+(b.hora||"")));
   const fechadoC = gruposFechados.has("__coletas");
@@ -5320,7 +5336,7 @@ function fechar(velocidade){
     aoParar(){ escurecer.classList.remove("viva"); painel.innerHTML = ""; }
   });
 }
-const TIPOS_EVENTO = ["Entrada na base","Saída para entrega","Entrega concluída","Tentativa de entrega","Retorno à base","Reagendamento","Observação"];
+const TIPOS_EVENTO = ["Entrada na base","Saída para entrega","Coleta realizada","Entrega concluída","Tentativa de entrega","Retorno à base","Reagendamento","Observação"];
 const opcoes = (lista, atual) => lista.map(x =>
   '<option'+(x===atual?' selected':'')+'>'+esc(x)+'</option>').join("");
 
@@ -5413,8 +5429,9 @@ function conteudoPainel(v){
     '<div class="p-corpo">'+
       (temNota(v) ? notaHTML(v, "nota-ficha") : '')+
       '<div class="bloco"><h3>Situação</h3><div class="campo">'+
-        '<select id="p-status">'+STATUS.map(s => '<option'+(s===v.status?' selected':'')+'>'+s+'</option>').join("")+'</select>'+
-        (v.status === "Em rota" ? '<div class="mot-ficha">'+ICONE_CAMINHAO+'<span>'+
+        '<select id="p-status">'+STATUS.filter(s => s !== "Coletado" || v.direta || v.status === s)
+          .map(s => '<option'+(s===v.status?' selected':'')+'>'+s+'</option>').join("")+'</select>'+
+        (v.status === "Em rota" || v.status === "Coletado" ? '<div class="mot-ficha">'+ICONE_CAMINHAO+'<span>'+
           (v.motorista ? 'Levando: <b>'+esc(v.motorista)+'</b>' : 'Motorista não informado')+'</span>'+
           '<button type="button" class="btn btn-s" id="p-motorista">'+(v.motorista ? 'Trocar' : 'Informar')+'</button></div>' : '')+
         (v.status === "Entregue" && v.recebedor ? '<div class="mot-ficha"><span>'+(v.motorista ? 'Entregue por <b>'+esc(v.motorista)+'</b> · r' : 'R')+'ecebido por <b>'+esc(v.recebedor)+'</b>'+
@@ -5659,6 +5676,16 @@ function ligarPainel(v){
       }catch(err){ e.target.value = v.status; recado("Não salvou: " + err.message); }
       return;
     }
+    if(e.target.value === "Coletado" && v.status !== "Coletado"){
+      const agora = new Date().toISOString();
+      try{
+        Object.assign(v, await atualizarVeiculo(v.id, { status: "Coletado" }));
+        dados.eventos.unshift(await inserirEvento({ veiculo: v.id, quando: agora, tipo: "Coleta realizada",
+          resultado: "Sucesso", motivo: "", obs: [v.origem ? "Em " + v.origem : "", v.motorista ? "Motorista: " + v.motorista : ""].filter(Boolean).join(" — ") }));
+        pintar(); repintarPainel(v); recado("Coletado" + (v.motorista ? " — com " + v.motorista : ""));
+      }catch(err){ e.target.value = v.status; recado("Não salvou: " + err.message); }
+      return;
+    }
     const campos = { status: e.target.value };
     try{ Object.assign(v, await atualizarVeiculo(v.id, campos)); pintar(); recado("Status atualizado"); }
     catch(err){ recado("Não salvou: " + err.message); }
@@ -5668,7 +5695,11 @@ function ligarPainel(v){
   if(pm) pm.onclick = async () => {
     const m = await escolherMotorista(v, v.motorista);
     if(m === null || m === (v.motorista || "")) return;
-    try{ await porEmRota(v, m, false); pintar(); repintarPainel(v); recado(m ? "Levando: " + m : "Motorista retirado"); }
+    try{
+      /* coletado só troca o nome: não pode voltar para "Em rota" */
+      if(v.status === "Coletado") Object.assign(v, await atualizarVeiculo(v.id, { motorista: m || null }));
+      else await porEmRota(v, m, false);
+      pintar(); repintarPainel(v); recado(m ? "Levando: " + m : "Motorista retirado"); }
     catch(err){ recado("Não salvou: " + err.message); }
   };
   /* saída editável na própria ficha: grava ao sair do campo */
@@ -6598,7 +6629,7 @@ async function carregarPreferencias(){
     }
     if(Array.isArray(p.ordem) && p.ordem.length){
       const val = p.ordem.filter(s => STATUS.includes(s));
-      STATUS.forEach(s => { if(!val.includes(s)) val.push(s); });
+      completarOrdem(val);
       ordemStatus = val;
       guardar(ORDEM_STATUS, JSON.stringify(ordemStatus));
       pintarPatio();
@@ -6790,7 +6821,7 @@ function ligarChaveDoMapa(){
 }
 
 const CORES = "prumo-cores-v1";
-const VAR_BLOCO = {"Na base":"--b-creme","Saída agendada":"--b-lilas","Em rota":"--b-lima",
+const VAR_BLOCO = {"Na base":"--b-creme","Saída agendada":"--b-lilas","Em rota":"--b-lima","Coletado":"--b-ceu",
   "Entregue":"--b-menta","Entrega rejeitada":"--b-coral","Aguardando destino":"--b-rosa",
   "Retornou à base":"--b-marinho"};
 let coresStatus = {};
@@ -7406,6 +7437,7 @@ const COR_PINO = {
   "Na base":            "#111827",  /* quase preto: parado, é o estado neutro */
   "Saída agendada":     "#2563EB",  /* azul */
   "Em rota":            "#F59E0B",  /* âmbar */
+  "Coletado":           "#EA580C",  /* laranja: já está no guincho */
   "Entregue":           "#16A34A",  /* verde */
   "Entrega rejeitada":  "#DC2626",  /* vermelho */
   "Aguardando destino": "#9333EA",  /* roxo */
@@ -7684,7 +7716,7 @@ function deslocarPino(m, ox, oy){
 function pinoDe(v, aprox, ordem){
   const html = '<div class="pino-interno" style="--pino:' + corDoStatus(v.status) + '">' +
     placaHTML(v.placa) + '<div class="bico"></div>' +
-    (v.status === "Em rota" ? '<span class="em-rota" title="Em rota' + (v.motorista ? ' com ' + esc(v.motorista) : '') + '"></span>' : '') +
+    (v.status === "Em rota" || v.status === "Coletado" ? '<span class="em-rota" title="' + v.status + (v.motorista ? ' com ' + esc(v.motorista) : '') + '"></span>' : '') +
     (aprox ? '<span class="marca-aprox" title="Posição aproximada">≈</span>' : '') +
     (ordem ? '<span class="ordem-viagem">' + ordem + '</span>' : '') + '</div>';
   return L.divIcon({ className:"pino" + (aprox ? " aproximado" : "") + (ordem ? " escolhido" : ""),
