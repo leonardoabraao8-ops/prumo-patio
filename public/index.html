@@ -5436,6 +5436,9 @@ function conteudoPainel(v){
           '<button type="button" class="btn btn-s" id="p-motorista">'+(v.motorista ? 'Trocar' : 'Informar')+'</button></div>' : '')+
         (v.status === "Entregue" && v.recebedor ? '<div class="mot-ficha"><span>'+(v.motorista ? 'Entregue por <b>'+esc(v.motorista)+'</b> · r' : 'R')+'ecebido por <b>'+esc(v.recebedor)+'</b>'+
           (v.entrega_local ? ' em outro endereço: '+esc(v.entrega_local) : ' no endereço da ficha')+'</span></div>' : '')+
+        /* fora de base que acabou vindo para o pátio: um toque converte */
+        (v.direta && v.status !== "Entregue" ? '<div class="mot-ficha"><span>Agendamento fora de base</span>'+
+          '<button type="button" class="btn btn-s" id="p-para-base" title="O carro veio para o pátio: vira entrada na base">Trazer para a base</button></div>' : '')+
       '</div></div>'+
       '<div class="bloco"><h3>Chamado</h3><dl class="dl">'+
         li("Seguradora",v.seguradora)+
@@ -5741,6 +5744,26 @@ function ligarPainel(v){
   };
   const sj = $("#s-junto");
   if(sj) sj.onchange = () => mudarJunto(v, sj.value);
+  /* Fora de base → base. Vira veículo do pátio a partir de agora: entrada
+     com a hora de hoje (os dias na base contam daqui), status Na base, sai
+     da viagem de quem levaria junto, e a data/hora da coleta é limpa — a
+     saída do pátio é outra, marcada depois. Origem e destino ficam. */
+  const pb = $("#p-para-base");
+  if(pb) pb.onclick = () => pedeConfirmacao(pb, "Confirmar: trazer para a base?", async () => {
+    const agora = new Date().toISOString();
+    const antes = { direta: true, status: v.status, junto: v.junto || null, entrada: v.entrada, data: v.data || null, hora: v.hora || null };
+    try{
+      Object.assign(v, await atualizarVeiculo(v.id, { direta: false, status: "Na base", junto: null,
+        entrada: agora, data: null, hora: null }));
+      dados.eventos.unshift(await inserirEvento({ veiculo: v.id, quando: agora, tipo: "Entrada na base",
+        resultado: "", motivo: "", obs: "Era agendamento fora de base" + (antes.status === "Coletado" && v.origem ? " — coletado em " + v.origem : "") }));
+      pintar(); repintarPainel(v);
+      recado((v.placa || "Veículo") + " agora está na base", { fazer: async () => {
+        try{ Object.assign(v, await atualizarVeiculo(v.id, antes)); pintar(); repintarPainel(v); recado("Desfeito"); }
+        catch(err){ recado("Não desfez: " + err.message); }
+      }});
+    }catch(err){ recado("Não salvou: " + err.message); }
+  });
   const lje = $("#lj-escolhe");
   if(lje) lje.onchange = () => { const c = dados.veiculos.find(x => x.id === lje.value); if(c) mudarJunto(c, v.id); };
   painel.querySelectorAll("[data-tira-junto]").forEach(bt => {
