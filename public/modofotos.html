@@ -42,6 +42,7 @@ header.topo h1{font-size:19px;margin:0;font-weight:650;flex:1;min-width:0;white-
 .btn-v{background:var(--verde);color:#fff}
 .btn-s{background:var(--cartao);border:1.5px solid var(--linha)}
 .btn-l{background:none;padding:10px 12px;min-height:44px;color:var(--tinta-2)}
+a.btn-l{display:inline-flex;align-items:center;text-decoration:none}
 .btn:disabled{opacity:.5}
 .btn-grande{width:100%;font-size:20px;min-height:64px;display:flex;align-items:center;justify-content:center;gap:10px}
 .voltar{font-size:24px;line-height:1;width:44px;height:44px;border-radius:12px;border:0;background:var(--cartao);cursor:pointer}
@@ -129,6 +130,7 @@ header.topo h1{font-size:19px;margin:0;font-weight:650;flex:1;min-width:0;white-
 <section id="t-lista" class="oculto">
   <header class="topo">
     <h1>Carros na base</h1>
+    <a class="btn btn-l oculto" id="l-patio" href="/">‹ Pátio</a>
     <button class="btn btn-l" id="l-atualizar" type="button">Atualizar</button>
     <button class="btn btn-l" id="l-sair" type="button">Sair</button>
   </header>
@@ -311,6 +313,8 @@ function pintarLista(){
 }
 $("#l-busca").oninput = pintarLista;
 $("#l-atualizar").onclick = abrirLista;
+/* quem veio do Pátio (escritório) ganha o caminho de volta; guincheiro não vê */
+try{ if(sessionStorage.getItem("veio-do-patio")) $("#l-patio").classList.remove("oculto"); }catch(e){}
 $("#l-sair").onclick = sair;
 $("#l-itens").onclick = e => {
   const b = e.target.closest(".carro");

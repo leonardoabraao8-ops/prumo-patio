@@ -1045,6 +1045,8 @@ html[data-papel="leitura"] .tira-foto{display:none}
    pesa num celular comum.
    ============================================================ */
 .filtros-linha,.filtros-extra{display:contents}
+.aba-fotos{display:none;text-decoration:none}
+html[data-papel="leitura"] .aba-fotos{display:none !important}
 .mais-filtros{display:none}
 @media (max-width:47.99rem){
   .topo{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--fundo);padding:calc(env(safe-area-inset-top,0px) + .5rem) .875rem 0}
@@ -1060,6 +1062,7 @@ html[data-papel="leitura"] .tira-foto{display:none}
   .ind span{font-size:.5625rem}
   .abas{margin-top:.375rem}
   .aba{padding:.5rem .25rem .625rem;margin-right:1rem;font-size:.875rem}
+  .aba-fotos{display:inline-flex}
   /* rolou para baixo: some o título, ficam as abas */
   html.rolou .cabecalho{display:none}
   html.rolou .topo{padding-top:calc(env(safe-area-inset-top,0px) + .125rem)}
@@ -2372,6 +2375,10 @@ html[data-papel="leitura"] #bloco-avisos{display:none}
         <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></button>
       <button class="aba aba-ico" role="tab" aria-selected="false" data-aba="config" aria-label="Configurações">
         <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5h9M17 7.5h4M3 16.5h4M12 16.5h9"/><circle cx="14.5" cy="7.5" r="2.4"/><circle cx="9.5" cy="16.5" r="2.4"/></svg></button>
+      <!-- no celular, ao lado dos ajustes: atalho para o modo fotos -->
+      <a class="aba aba-ico aba-fotos" href="/modofotos" aria-label="Modo fotos" title="Modo fotos"
+        onclick="try{sessionStorage.setItem('veio-do-patio','1')}catch(e){}">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5a2 2 0 0 1 2-2h1.6l1.3-2h6.2l1.3 2H18a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.6" r="3.4"/></svg></a>
       <span class="barra" id="barra"></span>
     </div>
   </div>
@@ -8840,7 +8847,7 @@ if(window.ResizeObserver && document.getElementById("topo"))
   new ResizeObserver(() => medirTopo()).observe(document.getElementById("topo"));
 
 document.addEventListener("click", e => {
-  const aba = e.target.closest(".aba");      if(aba){ trocarAba(aba.dataset.aba); return; }
+  const aba = e.target.closest(".aba[data-aba]"); if(aba){ trocarAba(aba.dataset.aba); return; }
   const ir  = e.target.closest("[data-ir]"); if(ir){ trocarAba(ir.dataset.ir); return; }
   const arqT = e.target.closest("#arquivar-todos");
   if(arqT){ pedeConfirmacao(arqT, "Confirmar: arquivar " + filtrados().filter(v => v.status === "Entregue" && !arquivado(v)).length + "?", arquivarTodos); return; }
