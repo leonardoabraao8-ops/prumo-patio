@@ -10,12 +10,14 @@
 <style>
 /* =========================================================
    MODO FOTOS
-   Ferramenta do guincheiro: vê só placa e modelo dos carros na
-   base e tira as fotos de entrada na ordem que a tela pede.
-   Não lê nem muda mais nada do pátio — o banco só deixa
-   acrescentar foto (função registrar_foto).
-   Feita para o celular, uma mão, no sol: letra grande, botão
-   grande, contraste alto.
+   Ferramenta do guincheiro: vê só placa e modelo dos carros não
+   entregues e tira as fotos de entrada. Não lê nem muda mais nada
+   do pátio — o banco só deixa acrescentar foto (registrar_foto).
+
+   Fluxo enxuto, sem telas no meio: escolheu o carro, a câmera já
+   abre dentro da página; em cima, um ícone pequeno mostra de onde
+   tirar; um toque fotografa e já pula para o próximo ângulo. No
+   fim, uma tela só para revisar e aprovar — só aí sobe tudo.
    ========================================================= */
 :root{
   --fundo:#F4F3EF; --cartao:#FFFFFF; --tinta:#111; --tinta-2:#555; --linha:#DDDAD2;
@@ -41,7 +43,7 @@ header.topo h1{font-size:19px;margin:0;font-weight:650;flex:1;min-width:0;white-
 .btn-s{background:var(--cartao);border:1.5px solid var(--linha)}
 .btn-l{background:none;padding:10px 12px;min-height:44px;color:var(--tinta-2)}
 .btn:disabled{opacity:.5}
-.btn-grande{width:100%;font-size:20px;min-height:68px;display:flex;align-items:center;justify-content:center;gap:10px}
+.btn-grande{width:100%;font-size:20px;min-height:64px;display:flex;align-items:center;justify-content:center;gap:10px}
 .voltar{font-size:24px;line-height:1;width:44px;height:44px;border-radius:12px;border:0;background:var(--cartao);cursor:pointer}
 
 /* entrar */
@@ -68,34 +70,45 @@ header.topo h1{font-size:19px;margin:0;font-weight:650;flex:1;min-width:0;white-
 .vazio{text-align:center;color:var(--tinta-2);padding:40px 10px}
 .secao{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-2);margin:18px 2px 8px;font-weight:600}
 
-/* fotos de um carro */
-.trilha{display:flex;gap:6px;margin:4px 0 16px}
-.trilha i{flex:1;height:8px;border-radius:99px;background:var(--linha)}
-.trilha i.feita{background:var(--verde)}
-.trilha i.pulada{background:var(--laranja)}
-.trilha i.atual{background:var(--tinta)}
-.passo{background:var(--cartao);border:1.5px solid var(--linha);border-radius:var(--raio);padding:16px;text-align:center}
-.passo .num{font-size:14px;color:var(--tinta-2);font-weight:600}
-.passo h2{font-size:24px;margin:2px 0 4px}
-.passo .dica{color:var(--tinta-2);margin:0 0 6px}
-.passo svg{width:100%;max-width:300px;height:auto;display:block;margin:4px auto 8px}
-.previa{width:100%;border-radius:14px;display:block;margin:6px 0 10px;max-height:46vh;object-fit:cover}
-.linha-acoes{display:flex;gap:10px;margin-top:12px}
-.linha-acoes .btn{flex:1}
-.grade{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:18px}
-.mini{position:relative;aspect-ratio:1;border-radius:12px;background:var(--cartao);border:1.5px solid var(--linha);overflow:hidden;
-  display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;color:var(--tinta-2);padding:4px;cursor:pointer}
-.mini img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.mini .selo{position:absolute;right:4px;top:4px;width:20px;height:20px;border-radius:99px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;z-index:1}
-.mini .selo.ok{background:var(--verde)} .mini .selo.ind{background:var(--laranja)} .mini .selo.err{background:var(--vermelho)}
-.mini.atual{outline:3px solid var(--tinta);outline-offset:1px}
-.mini span.rot{position:relative;z-index:1}
-.mini.tem span.rot{display:none}
-.fim{background:var(--verde-claro);border-radius:var(--raio);padding:18px;text-align:center;margin-bottom:12px}
-.fim h2{margin:0 0 4px;font-size:22px}
+/* câmera em tela cheia */
+#t-camera{position:fixed;inset:0;background:#000;color:#fff;z-index:10;display:flex;flex-direction:column}
+#t-camera video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cam-topo{position:relative;z-index:2;display:flex;align-items:center;gap:12px;
+  padding:calc(10px + env(safe-area-inset-top)) 12px 10px;background:linear-gradient(rgba(0,0,0,.65),rgba(0,0,0,0))}
+.cam-topo .ico{width:56px;height:56px;flex-shrink:0;background:rgba(255,255,255,.95);border-radius:14px;padding:4px;color:#111}
+.cam-topo .ico svg{width:100%;height:100%;display:block}
+.cam-topo .txt{flex:1;min-width:0;line-height:1.2}
+.cam-topo .txt b{display:block;font-size:20px}
+.cam-topo .txt small{font-size:14px;opacity:.85}
+.cam-topo button{background:rgba(255,255,255,.18);border:0;border-radius:12px;color:#fff;padding:10px 12px;font-weight:600;min-height:44px}
+.cam-baixo{position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;align-items:center;justify-content:space-between;
+  padding:16px 22px calc(22px + env(safe-area-inset-bottom));background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.6))}
+.disparo{width:82px;height:82px;border-radius:99px;border:5px solid #fff;background:rgba(255,255,255,.25);cursor:pointer;padding:0}
+.disparo:active{background:#fff}
+.cam-ultima{width:58px;height:58px;border-radius:12px;background:rgba(255,255,255,.15);overflow:hidden;border:2px solid #fff;padding:0}
+.cam-ultima img{width:100%;height:100%;object-fit:cover;display:block}
+.cam-cont{width:58px;text-align:center;font-weight:700;font-size:18px}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:3;transition:opacity .25s}
+.flash.ativo{opacity:.85;transition:none}
+.cam-erro{position:relative;z-index:2;margin:auto 20px;text-align:center;background:rgba(0,0,0,.6);padding:20px;border-radius:16px}
+
+/* revisão */
+.revisao h2{margin:4px 0 2px;font-size:22px}
+.revisao p{margin:0 0 14px;color:var(--tinta-2)}
+.grade{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.foto{position:relative;aspect-ratio:4/3;border-radius:14px;overflow:hidden;background:var(--cartao);border:1.5px dashed var(--linha);
+  display:flex;align-items:center;justify-content:center;text-align:center;color:var(--tinta-2);cursor:pointer;padding:0}
+.foto img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.foto .rot{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.7));color:#fff;
+  font-size:13px;font-weight:600;padding:16px 8px 6px;text-align:left}
+.foto.vazia .rot{position:static;background:none;color:var(--tinta-2);padding:0 8px}
+.foto .refazer{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;border-radius:99px;font-size:12px;padding:4px 8px;font-weight:600}
+.foto .selo{position:absolute;top:6px;left:6px;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:700;font-size:13px}
+.selo.ok{background:var(--verde)} .selo.ind{background:var(--laranja)} .selo.err{background:var(--vermelho)}
+.acoes-fim{position:sticky;bottom:0;background:var(--fundo);padding:14px 0 calc(6px + env(safe-area-inset-bottom));margin-top:14px;display:flex;flex-direction:column;gap:10px}
 .recado{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#111;color:#fff;
-  padding:12px 18px;border-radius:14px;font-size:16px;max-width:calc(100% - 32px);z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.3)}
-.envios{font-size:14px;color:var(--tinta-2);text-align:center;margin-top:10px;min-height:20px}
+  padding:12px 18px;border-radius:14px;font-size:16px;max-width:calc(100% - 32px);z-index:30;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 </style>
 </head>
 <body>
@@ -125,49 +138,69 @@ header.topo h1{font-size:19px;margin:0;font-weight:650;flex:1;min-width:0;white-
   </div>
 </section>
 
-<!-- CARRO -->
-<section id="t-carro" class="oculto">
-  <header class="topo">
-    <button class="voltar" id="c-voltar" type="button" aria-label="Voltar para a lista">‹</button>
-    <h1 id="c-titulo"></h1>
-  </header>
-  <div class="tela">
-    <div class="trilha" id="c-trilha"></div>
-    <div id="c-corpo"></div>
-    <div class="grade" id="c-grade"></div>
-    <div class="envios" id="c-envios"></div>
+<!-- CÂMERA -->
+<section id="t-camera" class="oculto">
+  <video id="video" playsinline muted autoplay></video>
+  <div class="flash" id="flash"></div>
+  <div class="cam-topo">
+    <div class="ico" id="cam-ico"></div>
+    <div class="txt"><b id="cam-nome"></b><small id="cam-dica"></small></div>
+    <button type="button" id="cam-pular">Pular</button>
+  </div>
+  <div class="cam-erro oculto" id="cam-erro"></div>
+  <div class="cam-baixo">
+    <button type="button" class="cam-ultima" id="cam-revisar" aria-label="Revisar as fotos"></button>
+    <button type="button" class="disparo" id="cam-disparo" aria-label="Tirar foto"></button>
+    <div class="cam-cont" id="cam-cont"></div>
   </div>
 </section>
 
-<input type="file" id="camera" accept="image/*" capture="environment" class="oculto">
+<!-- REVISÃO -->
+<section id="t-revisao" class="oculto">
+  <header class="topo">
+    <button class="voltar" id="r-voltar" type="button" aria-label="Voltar para a lista">‹</button>
+    <h1 id="r-titulo"></h1>
+  </header>
+  <div class="tela revisao">
+    <h2 id="r-resumo"></h2>
+    <p id="r-sub">Confira. Toque numa foto para refazer.</p>
+    <div class="grade" id="r-grade"></div>
+    <div class="acoes-fim">
+      <button class="btn btn-s btn-grande" id="r-extra" type="button">📷 Foto extra (avaria, detalhe)</button>
+      <button class="btn btn-v btn-grande" id="r-aprovar" type="button">Aprovar e enviar</button>
+    </div>
+  </div>
+</section>
+
+<input type="file" id="arquivo" accept="image/*" capture="environment" class="oculto">
 <div class="recado oculto" id="recado"></div>
 
 <script>
 const SUPABASE_URL = "https://tbdeoytkiqhzadtbuazs.supabase.co";
 const SUPABASE_KEY = "sb_publishable_uvgCHP3eaElSuhX7OEvPuw_gRywnPMs";
-/* mesma sessão guardada do Pátio: quem é mandado de lá para cá não
-   precisa entrar de novo */
+/* mesma sessão guardada do Pátio: quem é mandado de lá para cá não entra de novo */
 const SESSAO = "prumo-sessao-v1";
 const $ = s => document.querySelector(s);
 
-/* As 8 fotos, na ordem de quem dá a volta no carro: começa pela frente,
-   segue pelo lado do motorista até a traseira, volta pelo outro lado e
-   termina por dentro. x/y = onde a pessoa fica no desenho visto de cima. */
+/* As 8 fotos, na ordem de quem dá a volta no carro. x/y = onde a pessoa
+   fica no desenho do carro visto de cima (frente para cima). */
 const ANGULOS = [
-  { id:"frente",   nome:"Frente",              dica:"De frente, a uns 3 passos. A placa tem que aparecer.", x:100, y:18 },
-  { id:"diag_de",  nome:"Dianteira esquerda",  dica:"Na quina da frente, lado do motorista. Pega a frente e a lateral.", x:30, y:40 },
-  { id:"diag_te",  nome:"Traseira esquerda",   dica:"Na quina de trás, lado do motorista. Pega a traseira e a lateral.", x:30, y:222 },
-  { id:"traseira", nome:"Traseira",            dica:"De trás, a uns 3 passos. A placa tem que aparecer.", x:100, y:244 },
-  { id:"diag_td",  nome:"Traseira direita",    dica:"Na quina de trás, lado do passageiro.", x:170, y:222 },
-  { id:"diag_dd",  nome:"Dianteira direita",   dica:"Na quina da frente, lado do passageiro.", x:170, y:40 },
-  { id:"painel",   nome:"Painel ligado",       dica:"Ligue a ignição. O KM e as luzes do painel têm que dar para ler.", dentro:"painel" },
-  { id:"interior", nome:"Bancos",              dica:"Da porta do motorista, mostrando os bancos da frente.", dentro:"bancos" }
+  { id:"frente",   nome:"Frente",             dica:"Com a placa aparecendo",          x:50, y:6 },
+  { id:"diag_de",  nome:"Dianteira esquerda", dica:"Quina da frente, lado motorista",  x:12, y:16 },
+  { id:"diag_te",  nome:"Traseira esquerda",  dica:"Quina de trás, lado motorista",    x:12, y:84 },
+  { id:"traseira", nome:"Traseira",           dica:"Com a placa aparecendo",          x:50, y:94 },
+  { id:"diag_td",  nome:"Traseira direita",   dica:"Quina de trás, lado passageiro",   x:88, y:84 },
+  { id:"diag_dd",  nome:"Dianteira direita",  dica:"Quina da frente, lado passageiro", x:88, y:16 },
+  { id:"painel",   nome:"Painel ligado",      dica:"KM e luzes legíveis",             dentro:"painel" },
+  { id:"interior", nome:"Bancos",             dica:"Da porta do motorista",            dentro:"bancos" }
 ];
 
-let sessao = null, carros = [], carro = null, passo = 0;
-/* estado das fotos do carro aberto: id do ângulo → { foto (dataURL da prévia), estado: "ok"|"enviando"|"erro"|"pulada" } */
-let fotos = {};
-let enviando = 0;
+let sessao = null, carros = [], carro = null;
+/* fotos do carro aberto, ainda no aparelho até aprovar:
+   ângulo → { blob, mini, url (prévia), estado: "nova"|"enviando"|"ok"|"erro" }
+   ângulo já salvo antes vem como { estado:"salva" } (sem prévia) */
+let fotos = {}, extras = [], atual = 0, voltarParaRevisao = false;
+let fluxo = null, usandoArquivo = false;
 
 /* ---------- sessão ---------- */
 function guardarSessao(d){
@@ -189,14 +222,12 @@ let renovando = null;
 async function token(){
   if(!sessao) throw new Error("sem sessão");
   if(Date.now() > sessao.expira - 60000){
-    /* outra aba pode ter renovado antes: usa a dela */
-    const g = lerSessao();
+    const g = lerSessao();                       // outra aba pode ter renovado antes
     if(g && g.expira > sessao.expira) sessao = g;
     if(Date.now() > sessao.expira - 60000){
       renovando = renovando || auth("token?grant_type=refresh_token", { refresh_token:sessao.renova })
         .then(guardarSessao).finally(() => renovando = null);
-      try{ await renovando; }
-      catch(e){ if(e.recusado) sair(); throw e; }
+      try{ await renovando; }catch(e){ if(e.recusado) sair(); throw e; }
     }
   }
   return sessao.token;
@@ -216,12 +247,14 @@ async function api(caminho, opcoes){
 function sair(){
   sessao = null;
   try{ localStorage.removeItem(SESSAO); }catch(e){}
+  pararCamera();
   mostrar("entrar");
 }
 
 /* ---------- telas ---------- */
 function mostrar(qual){
-  ["entrar","lista","carro"].forEach(t => $("#t-" + t).classList.toggle("oculto", t !== qual));
+  ["entrar","lista","camera","revisao"].forEach(t => $("#t-" + t).classList.toggle("oculto", t !== qual));
+  if(qual !== "camera") pararCamera();
   window.scrollTo(0, 0);
 }
 let tempoRecado = 0;
@@ -264,7 +297,6 @@ function pintarLista(){
   const l = carros.filter(c => !t || (String(c.placa || "") + " " + String(c.modelo || "")).toLowerCase().replace(/[^a-z0-9 ]/g, "").includes(t));
   if(!carros.length){ $("#l-itens").innerHTML = '<div class="vazio">Nenhum carro na base agora.</div>'; return; }
   if(!l.length){ $("#l-itens").innerHTML = '<div class="vazio">Nenhum carro com essa busca.</div>'; return; }
-  /* quem ainda falta foto vem primeiro */
   const falta = l.filter(c => feitas(c) < ANGULOS.length), prontos = l.filter(c => feitas(c) >= ANGULOS.length);
   const item = c => {
     const f = feitas(c), ok = f >= ANGULOS.length;
@@ -279,188 +311,224 @@ function pintarLista(){
 }
 $("#l-busca").oninput = pintarLista;
 $("#l-atualizar").onclick = abrirLista;
-$("#l-sair").onclick = () => { if(!enviando || confirm("Ainda tem foto subindo. Sair mesmo assim?")) sair(); };
+$("#l-sair").onclick = sair;
 $("#l-itens").onclick = e => {
   const b = e.target.closest(".carro");
   if(b) abrirCarro(carros.find(c => c.id === b.dataset.id));
 };
 
-/* ---------- um carro ---------- */
+/* ---------- abrir um carro: direto na câmera ---------- */
 function abrirCarro(c){
   if(!c) return;
-  carro = c; fotos = {};
-  (c.angulos || []).forEach(a => { fotos[a] = { estado:"ok" }; });
-  /* começa no primeiro ângulo que ainda falta */
-  passo = ANGULOS.findIndex(a => !fotos[a.id]);
-  if(passo < 0) passo = ANGULOS.length;
-  $("#c-titulo").innerHTML = esc(c.placa || "") + ' <span style="font-weight:400;color:var(--tinta-2)">· ' + esc(c.modelo || "") + '</span>';
-  mostrar("carro");
-  pintarCarro();
-}
-$("#c-voltar").onclick = () => { abrirLista(); };
-
-function desenho(a){
-  if(a.dentro === "painel") return '<svg viewBox="0 0 200 120" aria-hidden="true">' +
-    '<rect x="10" y="20" width="180" height="70" rx="18" fill="none" stroke="currentColor" stroke-width="4"/>' +
-    '<circle cx="70" cy="55" r="22" fill="none" stroke="var(--verde)" stroke-width="5"/><circle cx="130" cy="55" r="22" fill="none" stroke="var(--verde)" stroke-width="5"/>' +
-    '<line x1="70" y1="55" x2="82" y2="42" stroke="var(--verde)" stroke-width="4" stroke-linecap="round"/><line x1="130" y1="55" x2="140" y2="66" stroke="var(--verde)" stroke-width="4" stroke-linecap="round"/>' +
-    '<text x="100" y="112" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">KM legível</text></svg>';
-  if(a.dentro === "bancos") return '<svg viewBox="0 0 200 120" aria-hidden="true">' +
-    '<rect x="30" y="20" width="55" height="80" rx="14" fill="none" stroke="var(--verde)" stroke-width="5"/>' +
-    '<rect x="115" y="20" width="55" height="80" rx="14" fill="none" stroke="var(--verde)" stroke-width="5"/>' +
-    '<rect x="40" y="8" width="35" height="14" rx="6" fill="currentColor"/><rect x="125" y="8" width="35" height="14" rx="6" fill="currentColor"/></svg>';
-  /* carro visto de cima, frente para cima; o ponto verde é onde a pessoa fica */
-  const cx = 100, cy = 130;
-  const ang = Math.atan2(cy - a.y, cx - a.x), dx = Math.cos(ang) * 26, dy = Math.sin(ang) * 26;
-  return '<svg viewBox="0 0 200 262" aria-hidden="true">' +
-    '<text x="100" y="64" text-anchor="middle" font-size="11" fill="var(--tinta-2)" font-weight="600">FRENTE</text>' +
-    '<rect x="66" y="70" width="68" height="122" rx="22" fill="var(--cartao)" stroke="currentColor" stroke-width="4"/>' +
-    '<path d="M74 100 Q100 88 126 100 L122 116 Q100 108 78 116 Z" fill="currentColor" opacity=".25"/>' +
-    '<path d="M78 166 Q100 172 122 166 L126 180 Q100 188 74 180 Z" fill="currentColor" opacity=".25"/>' +
-    '<rect x="60" y="88" width="8" height="18" rx="3" fill="currentColor"/><rect x="132" y="88" width="8" height="18" rx="3" fill="currentColor"/>' +
-    '<rect x="60" y="156" width="8" height="18" rx="3" fill="currentColor"/><rect x="132" y="156" width="8" height="18" rx="3" fill="currentColor"/>' +
-    '<text x="100" y="206" text-anchor="middle" font-size="11" fill="var(--tinta-2)" font-weight="600">TRASEIRA</text>' +
-    '<line x1="' + a.x + '" y1="' + a.y + '" x2="' + (a.x + dx) + '" y2="' + (a.y + dy) + '" stroke="var(--verde)" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 6"/>' +
-    '<circle cx="' + a.x + '" cy="' + a.y + '" r="13" fill="var(--verde)"/>' +
-    '<rect x="' + (a.x - 7) + '" y="' + (a.y - 5) + '" width="14" height="10" rx="2" fill="#fff"/><circle cx="' + a.x + '" cy="' + a.y + '" r="3" fill="var(--verde)"/>' +
-    '</svg>';
+  carro = c; fotos = {}; extras = []; voltarParaRevisao = false;
+  (c.angulos || []).forEach(a => { fotos[a] = { estado:"salva" }; });
+  const prox = ANGULOS.findIndex(a => !fotos[a.id]);
+  if(prox < 0){ abrirRevisao(); return; }          // já completo: só revisar/acrescentar
+  abrirCamera(prox);
 }
 
-function pintarCarro(){
-  $("#c-trilha").innerHTML = ANGULOS.map((a, i) => {
-    const f = fotos[a.id];
-    return '<i class="' + (i === passo ? "atual" : f && f.estado === "pulada" ? "pulada" : f ? "feita" : "") + '"></i>';
-  }).join("");
-  const corpo = $("#c-corpo");
-  if(passo >= ANGULOS.length){
-    const n = ANGULOS.filter(a => fotos[a.id] && fotos[a.id].estado !== "pulada").length;
-    corpo.innerHTML = '<div class="fim"><h2>' + (n >= ANGULOS.length ? "Fotos completas ✓" : n + " de " + ANGULOS.length + " fotos") + '</h2>' +
-      '<div>' + (enviando ? "Aguarde terminar de subir antes de sair." : "Toque numa foto abaixo para refazer.") + '</div></div>' +
-      '<button class="btn btn-s btn-grande" id="c-extra" type="button">📷 Foto extra (avaria, detalhe)</button>' +
-      '<div class="linha-acoes"><button class="btn btn-v btn-grande" id="c-concluir" type="button">Concluir</button></div>';
-    $("#c-extra").onclick = () => tirar("extra");
-    $("#c-concluir").onclick = () => { if(enviando){ recado("Ainda subindo " + enviando + (enviando > 1 ? " fotos" : " foto") + "…"); return; } abrirLista(); };
-  }else{
-    const a = ANGULOS[passo], f = fotos[a.id];
-    corpo.innerHTML = '<div class="passo"><div class="num">Foto ' + (passo + 1) + ' de ' + ANGULOS.length + '</div>' +
-      '<h2>' + esc(a.nome) + '</h2><p class="dica">' + esc(a.dica) + '</p>' +
-      (f && f.foto ? '<img class="previa" src="' + f.foto + '" alt="">' : desenho(a)) +
-      '<button class="btn btn-p btn-grande" id="c-tirar" type="button">📷 ' + (f && f.estado !== "pulada" ? "Tirar de novo" : "Tirar foto") + '</button>' +
-      '<div class="linha-acoes">' +
-        (passo > 0 ? '<button class="btn btn-s" id="c-ant" type="button">‹ Anterior</button>' : '') +
-        '<button class="btn btn-s" id="c-pular" type="button">' + (f && f.estado !== "pulada" ? "Próxima ›" : "Pular") + '</button></div></div>';
-    $("#c-tirar").onclick = () => tirar(a.id);
-    $("#c-pular").onclick = () => {
-      if(!fotos[a.id]) fotos[a.id] = { estado:"pulada" };
-      irPara(passo + 1);
-    };
-    if($("#c-ant")) $("#c-ant").onclick = () => irPara(passo - 1);
-  }
-  /* grade: todas as fotos, com o estado de cada uma; tocar leva àquela */
-  const extras = Object.keys(fotos).filter(k => k.startsWith("extra:"));
-  $("#c-grade").innerHTML = ANGULOS.map((a, i) => {
-    const f = fotos[a.id];
-    const selo = !f ? "" : f.estado === "ok" ? '<span class="selo ok">✓</span>' : f.estado === "enviando" ? '<span class="selo ind">…</span>'
-      : f.estado === "erro" ? '<span class="selo err">!</span>' : '<span class="selo ind">–</span>';
-    return '<div class="mini' + (i === passo ? " atual" : "") + (f && f.foto ? " tem" : "") + '" data-passo="' + i + '">' + selo +
-      (f && f.foto ? '<img src="' + f.foto + '" alt="">' : "") + '<span class="rot">' + esc(a.nome) + '</span></div>';
-  }).join("") + extras.map(k => {
-    const f = fotos[k];
-    const selo = f.estado === "ok" ? '<span class="selo ok">✓</span>' : f.estado === "erro" ? '<span class="selo err">!</span>' : '<span class="selo ind">…</span>';
-    return '<div class="mini tem" data-extra="' + k + '">' + selo + '<img src="' + f.foto + '" alt=""></div>';
-  }).join("");
-  /* tocar num quadrinho leva àquela foto; se ela falhou ao subir, reenvia */
-  $("#c-grade").querySelectorAll("[data-passo]").forEach(m => m.onclick = () => {
-    const a = ANGULOS[Number(m.dataset.passo)], f = fotos[a.id];
-    if(f && f.estado === "erro" && f.blob) enviar(a.id, a.id, f.blob, f.miniBlob);
-    irPara(Number(m.dataset.passo));
-  });
-  $("#c-grade").querySelectorAll("[data-extra]").forEach(m => m.onclick = () => {
-    const f = fotos[m.dataset.extra];
-    if(f && f.estado === "erro") enviar(m.dataset.extra, "extra", f.blob, f.miniBlob);
-  });
-  $("#c-envios").textContent = enviando ? "Subindo " + enviando + (enviando > 1 ? " fotos…" : " foto…") : "";
-}
-function irPara(n){
-  passo = Math.max(0, Math.min(ANGULOS.length, n));
-  pintarCarro();
-  window.scrollTo({ top:0, behavior:"smooth" });
+/* ícone pequeno: carro visto de cima com o ponto de onde tirar */
+function icone(a){
+  if(a.dentro === "painel") return '<svg viewBox="0 0 100 100"><rect x="6" y="26" width="88" height="48" rx="14" fill="none" stroke="currentColor" stroke-width="6"/>' +
+    '<circle cx="34" cy="50" r="13" fill="none" stroke="#1F8F4E" stroke-width="6"/><circle cx="66" cy="50" r="13" fill="none" stroke="#1F8F4E" stroke-width="6"/></svg>';
+  if(a.dentro === "bancos") return '<svg viewBox="0 0 100 100"><rect x="14" y="24" width="30" height="56" rx="10" fill="none" stroke="#1F8F4E" stroke-width="6"/>' +
+    '<rect x="56" y="24" width="30" height="56" rx="10" fill="none" stroke="#1F8F4E" stroke-width="6"/></svg>';
+  const ang = Math.atan2(50 - a.y, 50 - a.x), dx = Math.cos(ang) * 14, dy = Math.sin(ang) * 14;
+  return '<svg viewBox="0 0 100 100"><rect x="34" y="20" width="32" height="60" rx="11" fill="none" stroke="currentColor" stroke-width="6"/>' +
+    '<rect x="39" y="30" width="22" height="9" rx="3" fill="currentColor" opacity=".35"/>' +
+    '<line x1="' + a.x + '" y1="' + a.y + '" x2="' + (a.x + dx) + '" y2="' + (a.y + dy) + '" stroke="#1F8F4E" stroke-width="6" stroke-linecap="round"/>' +
+    '<circle cx="' + a.x + '" cy="' + a.y + '" r="9" fill="#1F8F4E"/></svg>';
 }
 
-/* ---------- câmera e envio ---------- */
-let alvoFoto = null;
-function tirar(id){
-  alvoFoto = id;
-  const cam = $("#camera");
-  cam.value = "";
-  cam.click();
-}
-$("#camera").onchange = async e => {
-  const arq = e.target.files && e.target.files[0];
-  if(!arq || !alvoFoto || !carro) return;
-  const id = alvoFoto; alvoFoto = null;
+async function abrirCamera(indice){
+  atual = indice;
+  mostrar("camera");
+  pintarCamera();
+  if(fluxo || usandoArquivo) return;
+  $("#cam-erro").classList.add("oculto");
   try{
-    const blob = await comprimir(arq, 1280, .6);
-    const miniBlob = await comprimir(arq, 360, .6).catch(() => null);
-    const chave = id === "extra" ? "extra:" + Date.now() : id;
-    fotos[chave] = { foto: URL.createObjectURL(miniBlob || blob), estado:"enviando", blob, miniBlob };
-    /* não espera subir: já mostra a próxima foto, o envio segue por trás */
-    if(id !== "extra"){
-      const i = ANGULOS.findIndex(a => a.id === id);
-      const prox = ANGULOS.findIndex((a, k) => k > i && !fotos[a.id]);
-      passo = prox >= 0 ? prox : ANGULOS.length;
-    }
-    pintarCarro();
-    enviar(chave, id, blob, miniBlob);
-  }catch(err){ recado("Não consegui ler a foto. Tente de novo."); }
-};
-async function enviar(chave, angulo, blob, miniBlob){
-  const c = carro;
-  const f = fotos[chave];
-  if(f){ f.estado = "enviando"; }
-  enviando++; pintarCarroSeAberto(c);
-  try{
-    const nome = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
-    const t = await token();
-    const r = await fetch(SUPABASE_URL + "/storage/v1/object/fotos/" + nome + ".jpg", { method:"POST",
-      headers:{ apikey:SUPABASE_KEY, Authorization:"Bearer " + t, "Content-Type":"image/jpeg" }, body:blob });
-    if(!r.ok) throw new Error("a foto não subiu (" + r.status + ")");
-    /* a miniatura é o que o Pátio mostra na galeria; se falhar, ele usa a grande */
-    if(miniBlob) fetch(SUPABASE_URL + "/storage/v1/object/fotos/" + nome + ".m.jpg", { method:"POST",
-      headers:{ apikey:SUPABASE_KEY, Authorization:"Bearer " + t, "Content-Type":"image/jpeg", "x-upsert":"true" }, body:miniBlob }).catch(() => {});
-    await api("rpc/registrar_foto", { method:"POST", body:JSON.stringify({
-      p_veiculo:c.id, p_angulo:angulo, p_url:SUPABASE_URL + "/storage/v1/object/public/fotos/" + nome + ".jpg" }) });
-    if(f){ f.estado = "ok"; delete f.blob; delete f.miniBlob; }
-    if(angulo !== "extra" && !(c.angulos || []).includes(angulo)) c.angulos = (c.angulos || []).concat(angulo);
+    fluxo = await navigator.mediaDevices.getUserMedia({ audio:false,
+      video:{ facingMode:{ ideal:"environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } } });
+    const v = $("#video");
+    v.srcObject = fluxo;
+    await v.play().catch(() => {});
   }catch(err){
-    if(f) f.estado = "erro";
-    recado("Uma foto não subiu: " + err.message + ". Toque nela para tentar de novo.");
-  }finally{
-    enviando--; pintarCarroSeAberto(c);
+    /* sem câmera na página (permissão negada, navegador antigo): cai para a
+       câmera do próprio celular, uma foto de cada vez */
+    usandoArquivo = true;
+    $("#cam-erro").innerHTML = "A câmera não abriu aqui dentro.<br>Toque no botão branco para abrir a câmera do celular.";
+    $("#cam-erro").classList.remove("oculto");
   }
 }
-function pintarCarroSeAberto(c){ if(carro === c && !$("#t-carro").classList.contains("oculto")) pintarCarro(); }
-addEventListener("beforeunload", e => { if(enviando){ e.preventDefault(); e.returnValue = ""; } });
-
-/* foto de celular tem 4 MB: reduz antes de subir, igual ao Pátio */
-function comprimir(arquivo, largura, qualidade){
+function pararCamera(){
+  if(fluxo){ fluxo.getTracks().forEach(t => t.stop()); fluxo = null; }
+  const v = $("#video"); if(v) v.srcObject = null;
+}
+function pintarCamera(){
+  const a = atual === "extra" ? { nome:"Foto extra", dica:"Avaria ou detalhe", dentro:"extra" } : ANGULOS[atual];
+  $("#cam-ico").innerHTML = a.dentro === "extra"
+    ? '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="none" stroke="#C62828" stroke-width="7"/><line x1="50" y1="34" x2="50" y2="54" stroke="#C62828" stroke-width="8" stroke-linecap="round"/><circle cx="50" cy="66" r="5" fill="#C62828"/></svg>'
+    : icone(a);
+  $("#cam-nome").textContent = a.nome;
+  $("#cam-dica").textContent = a.dica;
+  $("#cam-pular").textContent = atual === "extra" || voltarParaRevisao ? "Cancelar" : "Pular";
+  const n = ANGULOS.filter(x => fotos[x.id]).length;
+  $("#cam-cont").textContent = (atual === "extra" ? "+" : (atual + 1)) + "/" + ANGULOS.length;
+  const ultima = [...extras].reverse().concat(ANGULOS.map(x => fotos[x.id]).reverse()).find(f => f && f.url);
+  $("#cam-revisar").innerHTML = ultima ? '<img src="' + ultima.url + '" alt="">' : "";
+  $("#cam-revisar").style.visibility = n || extras.length ? "visible" : "hidden";
+}
+/* depois de cada foto: o próximo ângulo que falta; acabou → revisão */
+function avancar(){
+  if(voltarParaRevisao || atual === "extra"){ abrirRevisao(); return; }
+  const prox = ANGULOS.findIndex((a, k) => k > atual && !fotos[a.id]);
+  if(prox < 0){ abrirRevisao(); return; }
+  atual = prox; pintarCamera();
+}
+$("#cam-pular").onclick = () => {
+  if(atual === "extra" || voltarParaRevisao){ abrirRevisao(); return; }
+  const prox = ANGULOS.findIndex((a, k) => k > atual && !fotos[a.id]);
+  if(prox < 0){ abrirRevisao(); return; }
+  atual = prox; pintarCamera();
+};
+$("#cam-revisar").onclick = abrirRevisao;
+$("#cam-disparo").onclick = async () => {
+  if(usandoArquivo || !fluxo){ $("#arquivo").value = ""; $("#arquivo").click(); return; }
+  const v = $("#video");
+  if(!v.videoWidth){ recado("A câmera ainda está abrindo…"); return; }
+  /* clarão curto: dá a certeza de que a foto foi tirada */
+  const fl = $("#flash"); fl.classList.add("ativo"); requestAnimationFrame(() => requestAnimationFrame(() => fl.classList.remove("ativo")));
+  if(navigator.vibrate) navigator.vibrate(30);
+  const tela = document.createElement("canvas");
+  const e = Math.min(1, 1280 / Math.max(v.videoWidth, v.videoHeight));
+  tela.width = Math.round(v.videoWidth * e); tela.height = Math.round(v.videoHeight * e);
+  tela.getContext("2d").drawImage(v, 0, 0, tela.width, tela.height);
+  guardarFoto(await paraBlob(tela, .7), await reduzir(tela, 360));
+};
+$("#arquivo").onchange = async e => {
+  const arq = e.target.files && e.target.files[0];
+  if(!arq) return;
+  try{
+    const img = await carregarImagem(arq);
+    const tela = document.createElement("canvas");
+    const k = Math.min(1, 1280 / Math.max(img.width, img.height));
+    tela.width = Math.round(img.width * k); tela.height = Math.round(img.height * k);
+    const g = tela.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, tela.width, tela.height);
+    g.drawImage(img, 0, 0, tela.width, tela.height);
+    guardarFoto(await paraBlob(tela, .6), await reduzir(tela, 360));
+  }catch(err){ recado("Não consegui ler a foto."); }
+};
+function guardarFoto(blob, mini){
+  const f = { blob, mini, url:URL.createObjectURL(mini || blob), estado:"nova" };
+  if(atual === "extra") extras.push(f);
+  else{
+    const velha = fotos[ANGULOS[atual].id];
+    if(velha && velha.url) URL.revokeObjectURL(velha.url);
+    fotos[ANGULOS[atual].id] = f;
+  }
+  avancar();
+}
+const paraBlob = (tela, q) => new Promise((ok, falha) => tela.toBlob(b => b ? ok(b) : falha(new Error("falha")), "image/jpeg", q));
+function reduzir(tela, lado){
+  const k = Math.min(1, lado / Math.max(tela.width, tela.height));
+  const m = document.createElement("canvas");
+  m.width = Math.round(tela.width * k); m.height = Math.round(tela.height * k);
+  m.getContext("2d").drawImage(tela, 0, 0, m.width, m.height);
+  return paraBlob(m, .6).catch(() => null);
+}
+function carregarImagem(arq){
   return new Promise((ok, falha) => {
-    const url = URL.createObjectURL(arquivo);
-    const img = new Image();
-    img.onerror = () => { URL.revokeObjectURL(url); falha(new Error("imagem inválida")); };
-    img.onload = () => {
-      const e = Math.min(1, largura / Math.max(img.width, img.height));
-      const tela = document.createElement("canvas");
-      tela.width = Math.round(img.width * e); tela.height = Math.round(img.height * e);
-      const g = tela.getContext("2d");
-      g.fillStyle = "#fff"; g.fillRect(0, 0, tela.width, tela.height);
-      g.drawImage(img, 0, 0, tela.width, tela.height);
-      URL.revokeObjectURL(url);
-      tela.toBlob(b => b ? ok(b) : falha(new Error("falha ao comprimir")), "image/jpeg", qualidade);
-    };
-    img.src = url;
+    const u = URL.createObjectURL(arq), img = new Image();
+    img.onload = () => { URL.revokeObjectURL(u); ok(img); };
+    img.onerror = () => { URL.revokeObjectURL(u); falha(new Error("imagem inválida")); };
+    img.src = u;
   });
 }
+
+/* ---------- revisão e aprovação ---------- */
+function abrirRevisao(){
+  voltarParaRevisao = true;
+  mostrar("revisao");
+  pintarRevisao();
+}
+function pintarRevisao(){
+  $("#r-titulo").innerHTML = esc(carro.placa || "") + ' <span style="font-weight:400;color:var(--tinta-2)">· ' + esc(carro.modelo || "") + '</span>';
+  const novas = ANGULOS.filter(a => fotos[a.id] && fotos[a.id].blob).length + extras.filter(f => f.blob).length;
+  const total = ANGULOS.filter(a => fotos[a.id]).length;
+  $("#r-resumo").textContent = total + " de " + ANGULOS.length + " fotos" + (extras.length ? " + " + extras.length + " extra" + (extras.length > 1 ? "s" : "") : "");
+  const selo = f => !f ? "" : f.estado === "ok" || f.estado === "salva" ? '<span class="selo ok">✓</span>'
+    : f.estado === "enviando" ? '<span class="selo ind">…</span>' : f.estado === "erro" ? '<span class="selo err">!</span>' : "";
+  $("#r-grade").innerHTML = ANGULOS.map((a, i) => {
+    const f = fotos[a.id];
+    if(f && f.url) return '<button class="foto" data-i="' + i + '"><img src="' + f.url + '" alt="">' + selo(f) +
+      '<span class="refazer">Refazer</span><span class="rot">' + esc(a.nome) + '</span></button>';
+    if(f && f.estado === "salva") return '<button class="foto vazia" data-i="' + i + '">' + selo(f) +
+      '<span class="rot">' + esc(a.nome) + '<br><small>já enviada · tocar para refazer</small></span></button>';
+    return '<button class="foto vazia" data-i="' + i + '"><span class="rot">📷 ' + esc(a.nome) + '<br><small>faltando</small></span></button>';
+  }).join("") + extras.map((f, k) => '<button class="foto" data-x="' + k + '"><img src="' + f.url + '" alt="">' + selo(f) +
+    '<span class="rot">Extra ' + (k + 1) + '</span></button>').join("");
+  $("#r-grade").querySelectorAll("[data-i]").forEach(b => b.onclick = () => abrirCamera(Number(b.dataset.i)));
+  $("#r-grade").querySelectorAll("[data-x]").forEach(b => b.onclick = () => {
+    if(extras[b.dataset.x].estado === "ok") return;
+    if(confirm("Tirar esta foto extra?")){ URL.revokeObjectURL(extras[b.dataset.x].url); extras.splice(Number(b.dataset.x), 1); pintarRevisao(); }
+  });
+  const ap = $("#r-aprovar");
+  ap.disabled = !novas || enviandoTudo;
+  ap.textContent = enviandoTudo ? "Enviando…" : novas ? "Aprovar e enviar " + novas + (novas > 1 ? " fotos" : " foto") : "Nada novo para enviar";
+  $("#r-sub").textContent = novas ? "Confira. Toque numa foto para refazer." : "Toque num quadro para tirar ou refazer a foto.";
+}
+$("#r-extra").onclick = () => { abrirCamera("extra"); };
+$("#r-voltar").onclick = () => {
+  const pend = ANGULOS.some(a => fotos[a.id] && fotos[a.id].blob) || extras.some(f => f.blob);
+  if(pend && !confirm("As fotos ainda não foram enviadas. Sair e perder?")) return;
+  abrirLista();
+};
+let enviandoTudo = false;
+$("#r-aprovar").onclick = async () => {
+  const fila = ANGULOS.filter(a => fotos[a.id] && fotos[a.id].blob).map(a => [a.id, fotos[a.id]])
+    .concat(extras.filter(f => f.blob).map(f => ["extra", f]));
+  if(!fila.length) return;
+  enviandoTudo = true;
+  fila.forEach(([, f]) => f.estado = "enviando");
+  pintarRevisao();
+  /* duas por vez: rápido no 4G sem engasgar */
+  let i = 0;
+  const trabalhador = async () => {
+    while(i < fila.length){
+      const [ang, f] = fila[i++];
+      try{ await enviarFoto(ang, f); f.estado = "ok"; delete f.blob; delete f.mini; }
+      catch(err){ f.estado = "erro"; f.msg = err.message; }
+      pintarRevisao();
+    }
+  };
+  await Promise.all([trabalhador(), trabalhador()]);
+  enviandoTudo = false;
+  const erros = fila.filter(([, f]) => f.estado === "erro").length;
+  if(erros){ recado(erros + (erros > 1 ? " fotos não subiram" : " foto não subiu") + ". Toque em Aprovar de novo."); fila.forEach(([, f]) => { if(f.estado === "erro") f.estado = "nova"; }); pintarRevisao(); return; }
+  recado("Fotos enviadas ✓");
+  carro.angulos = Array.from(new Set((carro.angulos || []).concat(fila.map(([a]) => a).filter(a => a !== "extra"))));
+  setTimeout(abrirLista, 700);
+};
+async function enviarFoto(angulo, f){
+  const nome = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
+  const t = await token();
+  const r = await fetch(SUPABASE_URL + "/storage/v1/object/fotos/" + nome + ".jpg", { method:"POST",
+    headers:{ apikey:SUPABASE_KEY, Authorization:"Bearer " + t, "Content-Type":"image/jpeg" }, body:f.blob });
+  if(!r.ok) throw new Error("a foto não subiu (" + r.status + ")");
+  /* a miniatura é o que o Pátio mostra na galeria; se falhar, ele usa a grande */
+  if(f.mini) await fetch(SUPABASE_URL + "/storage/v1/object/fotos/" + nome + ".m.jpg", { method:"POST",
+    headers:{ apikey:SUPABASE_KEY, Authorization:"Bearer " + t, "Content-Type":"image/jpeg", "x-upsert":"true" }, body:f.mini }).catch(() => {});
+  await api("rpc/registrar_foto", { method:"POST", body:JSON.stringify({
+    p_veiculo:carro.id, p_angulo:angulo, p_url:SUPABASE_URL + "/storage/v1/object/public/fotos/" + nome + ".jpg" }) });
+}
+addEventListener("beforeunload", e => {
+  if(ANGULOS.some(a => fotos[a.id] && fotos[a.id].blob) || extras.some(f => f.blob)){ e.preventDefault(); e.returnValue = ""; }
+});
+/* celular bloqueado com a câmera aberta: solta a câmera e pega de novo na volta */
+document.addEventListener("visibilitychange", () => {
+  if(document.hidden) pararCamera();
+  else if(!$("#t-camera").classList.contains("oculto") && !usandoArquivo) abrirCamera(atual);
+});
 
 /* ---------- início ---------- */
 sessao = lerSessao();
