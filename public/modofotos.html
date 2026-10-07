@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<title>Fotos de entrada · Prumo</title>
+<link rel="icon" href="icone-192.png">
+<link rel="apple-touch-icon" href="icone-192.png">
+<style>
+/* =========================================================
+   MODO FOTOS
+   Ferramenta do guincheiro: vê só placa e modelo dos carros na
+   base e tira as fotos de entrada na ordem que a tela pede.
+   Não lê nem muda mais nada do pátio — o banco só deixa
+   acrescentar foto (função registrar_foto).
+   Feita para o celular, uma mão, no sol: letra grande, botão
+   grande, contraste alto.
+   ========================================================= */
+:root{
+  --fundo:#F4F3EF; --cartao:#FFFFFF; --tinta:#111; --tinta-2:#555; --linha:#DDDAD2;
+  --verde:#1F8F4E; --verde-claro:#DDF3E6; --laranja:#D9730D; --vermelho:#C62828; --azul:#0B3A8C;
+  --raio:18px;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --fundo:#111; --cartao:#1C1C1C; --tinta:#F2F2F2; --tinta-2:#AAA; --linha:#333;
+    --verde:#3DBE72; --verde-claro:#163A25; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--fundo);color:var(--tinta);
+  font:17px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+button,input{font:inherit;color:inherit}
+.oculto{display:none !important}
+.tela{max-width:560px;margin:0 auto;padding:16px 16px calc(24px + env(safe-area-inset-bottom))}
+header.topo{display:flex;align-items:center;gap:10px;padding:14px 16px;position:sticky;top:0;z-index:5;
+  background:var(--fundo);border-bottom:1px solid var(--linha)}
+header.topo h1{font-size:19px;margin:0;font-weight:650;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn{border:0;border-radius:14px;padding:14px 18px;font-weight:600;cursor:pointer;min-height:52px}
+.btn-p{background:var(--tinta);color:var(--fundo)}
+.btn-v{background:var(--verde);color:#fff}
+.btn-s{background:var(--cartao);border:1.5px solid var(--linha)}
+.btn-l{background:none;padding:10px 12px;min-height:44px;color:var(--tinta-2)}
+.btn:disabled{opacity:.5}
+.btn-grande{width:100%;font-size:20px;min-height:68px;display:flex;align-items:center;justify-content:center;gap:10px}
+.voltar{font-size:24px;line-height:1;width:44px;height:44px;border-radius:12px;border:0;background:var(--cartao);cursor:pointer}
+
+/* entrar */
+.entrar{max-width:420px;margin:12vh auto 0;padding:0 20px}
+.entrar h1{font-size:26px;margin:0 0 4px}
+.entrar p{color:var(--tinta-2);margin:0 0 22px}
+.campo{display:block;margin-bottom:14px}
+.campo span{display:block;font-size:14px;color:var(--tinta-2);margin-bottom:6px}
+.campo input{width:100%;padding:14px;border-radius:12px;border:1.5px solid var(--linha);background:var(--cartao);font-size:18px}
+.erro{color:var(--vermelho);font-size:15px;min-height:22px;margin:4px 0 10px}
+
+/* lista */
+.busca{width:100%;padding:14px 16px;border-radius:14px;border:1.5px solid var(--linha);background:var(--cartao);font-size:18px;margin:4px 0 14px}
+.carro{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--cartao);border:1.5px solid var(--linha);
+  border-radius:var(--raio);padding:14px;margin-bottom:10px;cursor:pointer}
+.carro .info{flex:1;min-width:0}
+.carro .modelo{font-weight:600;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.carro .falta{font-size:15px;color:var(--laranja);font-weight:600;margin-top:2px}
+.carro.completo .falta{color:var(--verde)}
+.carro .seta{font-size:26px;color:var(--tinta-2)}
+.placa{display:inline-flex;flex-direction:column;border:2px solid #111;border-radius:7px;overflow:hidden;background:#fff;color:#111;flex-shrink:0;min-width:96px}
+.placa .br{background:var(--azul);color:#fff;font-size:8px;letter-spacing:.2em;text-align:center;font-weight:700;padding:1px 0}
+.placa .num{font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;font-weight:700;font-size:19px;letter-spacing:.06em;text-align:center;padding:2px 8px 3px}
+.vazio{text-align:center;color:var(--tinta-2);padding:40px 10px}
+.secao{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-2);margin:18px 2px 8px;font-weight:600}
+
+/* fotos de um carro */
+.trilha{display:flex;gap:6px;margin:4px 0 16px}
+.trilha i{flex:1;height:8px;border-radius:99px;background:var(--linha)}
+.trilha i.feita{background:var(--verde)}
+.trilha i.pulada{background:var(--laranja)}
+.trilha i.atual{background:var(--tinta)}
+.passo{background:var(--cartao);border:1.5px solid var(--linha);border-radius:var(--raio);padding:16px;text-align:center}
+.passo .num{font-size:14px;color:var(--tinta-2);font-weight:600}
+.passo h2{font-size:24px;margin:2px 0 4px}
+.passo .dica{color:var(--tinta-2);margin:0 0 6px}
+.passo svg{width:100%;max-width:300px;height:auto;display:block;margin:4px auto 8px}
+.previa{width:100%;border-radius:14px;display:block;margin:6px 0 10px;max-height:46vh;object-fit:cover}
+.linha-acoes{display:flex;gap:10px;margin-top:12px}
+.linha-acoes .btn{flex:1}
+.grade{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:18px}
+.mini{position:relative;aspect-ratio:1;border-radius:12px;background:var(--cartao);border:1.5px solid var(--linha);overflow:hidden;
+  display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;color:var(--tinta-2);padding:4px;cursor:pointer}
+.mini img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.mini .selo{position:absolute;right:4px;top:4px;width:20px;height:20px;border-radius:99px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;z-index:1}
+.mini .selo.ok{background:var(--verde)} .mini .selo.ind{background:var(--laranja)} .mini .selo.err{background:var(--vermelho)}
+.mini.atual{outline:3px solid var(--tinta);outline-offset:1px}
+.mini span.rot{position:relative;z-index:1}
+.mini.tem span.rot{display:none}
+.fim{background:var(--verde-claro);border-radius:var(--raio);padding:18px;text-align:center;margin-bottom:12px}
+.fim h2{margin:0 0 4px;font-size:22px}
+.recado{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#111;color:#fff;
+  padding:12px 18px;border-radius:14px;font-size:16px;max-width:calc(100% - 32px);z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.envios{font-size:14px;color:var(--tinta-2);text-align:center;margin-top:10px;min-height:20px}
+</style>
+</head>
+<body>
+
+<!-- ENTRAR -->
+<section id="t-entrar" class="entrar oculto">
+  <h1>Fotos de entrada</h1>
+  <p>Prumo · entre com o mesmo e-mail e senha do aplicativo de abastecimento.</p>
+  <form id="f-entrar">
+    <label class="campo"><span>E-mail</span><input id="e-email" type="email" autocomplete="username" inputmode="email" required></label>
+    <label class="campo"><span>Senha</span><input id="e-senha" type="password" autocomplete="current-password" required></label>
+    <div class="erro" id="e-erro"></div>
+    <button class="btn btn-p btn-grande" type="submit" id="e-botao">Entrar</button>
+  </form>
+</section>
+
+<!-- LISTA -->
+<section id="t-lista" class="oculto">
+  <header class="topo">
+    <h1>Carros na base</h1>
+    <button class="btn btn-l" id="l-atualizar" type="button">Atualizar</button>
+    <button class="btn btn-l" id="l-sair" type="button">Sair</button>
+  </header>
+  <div class="tela">
+    <input class="busca" id="l-busca" type="search" placeholder="Procurar placa ou modelo" autocomplete="off">
+    <div id="l-itens"></div>
+  </div>
+</section>
+
+<!-- CARRO -->
+<section id="t-carro" class="oculto">
+  <header class="topo">
+    <button class="voltar" id="c-voltar" type="button" aria-label="Voltar para a lista">‹</button>
+    <h1 id="c-titulo"></h1>
+  </header>
+  <div class="tela">
+    <div class="trilha" id="c-trilha"></div>
+    <div id="c-corpo"></div>
+    <div class="grade" id="c-grade"></div>
+    <div class="envios" id="c-envios"></div>
+  </div>
+</section>
+
+<input type="file" id="camera" accept="image/*" capture="environment" class="oculto">
+<div class="recado oculto" id="recado"></div>
+
+<script>
+const SUPABASE_URL = "https://tbdeoytkiqhzadtbuazs.supabase.co";
+const SUPABASE_KEY = "sb_publishable_uvgCHP3eaElSuhX7OEvPuw_gRywnPMs";
+/* mesma sessão guardada do Pátio: quem é mandado de lá para cá não
+   precisa entrar de novo */
+const SESSAO = "prumo-sessao-v1";
+const $ = s => document.querySelector(s);
+
+/* As 8 fotos, na ordem de quem dá a volta no carro: começa pela frente,
+   segue pelo lado do motorista até a traseira, volta pelo outro lado e
+   termina por dentro. x/y = onde a pessoa fica no desenho visto de cima. */
+const ANGULOS = [
+  { id:"frente",   nome:"Frente",              dica:"De frente, a uns 3 passos. A placa tem que aparecer.", x:100, y:18 },
+  { id:"diag_de",  nome:"Dianteira esquerda",  dica:"Na quina da frente, lado do motorista. Pega a frente e a lateral.", x:30, y:40 },
+  { id:"diag_te",  nome:"Traseira esquerda",   dica:"Na quina de trás, lado do motorista. Pega a traseira e a lateral.", x:30, y:222 },
+  { id:"traseira", nome:"Traseira",            dica:"De trás, a uns 3 passos. A placa tem que aparecer.", x:100, y:244 },
+  { id:"diag_td",  nome:"Traseira direita",    dica:"Na quina de trás, lado do passageiro.", x:170, y:222 },
+  { id:"diag_dd",  nome:"Dianteira direita",   dica:"Na quina da frente, lado do passageiro.", x:170, y:40 },
+  { id:"painel",   nome:"Painel ligado",       dica:"Ligue a ignição. O KM e as luzes do painel têm que dar para ler.", dentro:"painel" },
+  { id:"interior", nome:"Bancos",              dica:"Da porta do motorista, mostrando os bancos da frente.", dentro:"bancos" }
+];
+
+let sessao = null, carros = [], carro = null, passo = 0;
+/* estado das fotos do carro aberto: id do ângulo → { foto (dataURL da prévia), estado: "ok"|"enviando"|"erro"|"pulada" } */
+let fotos = {};
+let enviando = 0;
+
+/* ---------- sessão ---------- */
+function guardarSessao(d){
+  sessao = { token:d.access_token, renova:d.refresh_token, expira:Date.now() + (d.expires_in || 3600) * 1000,
+    email:(d.user && d.user.email) || (sessao && sessao.email) || "" };
+  try{ localStorage.setItem(SESSAO, JSON.stringify(sessao)); }catch(e){}
+}
+function lerSessao(){
+  try{ const s = JSON.parse(localStorage.getItem(SESSAO) || "null"); return s && s.renova ? s : null; }catch(e){ return null; }
+}
+async function auth(caminho, corpo){
+  const r = await fetch(SUPABASE_URL + "/auth/v1/" + caminho, { method:"POST",
+    headers:{ apikey:SUPABASE_KEY, "Content-Type":"application/json" }, body:JSON.stringify(corpo) });
+  const d = await r.json().catch(() => ({}));
+  if(!r.ok){ const e = new Error(d.error_description || d.msg || "Erro " + r.status); e.recusado = r.status < 500; throw e; }
+  return d;
+}
+let renovando = null;
+async function token(){
+  if(!sessao) throw new Error("sem sessão");
+  if(Date.now() > sessao.expira - 60000){
+    /* outra aba pode ter renovado antes: usa a dela */
+    const g = lerSessao();
+    if(g && g.expira > sessao.expira) sessao = g;
+    if(Date.now() > sessao.expira - 60000){
+      renovando = renovando || auth("token?grant_type=refresh_token", { refresh_token:sessao.renova })
+        .then(guardarSessao).finally(() => renovando = null);
+      try{ await renovando; }
+      catch(e){ if(e.recusado) sair(); throw e; }
+    }
+  }
+  return sessao.token;
+}
+async function api(caminho, opcoes){
+  const t = await token();
+  const r = await fetch(SUPABASE_URL + "/rest/v1/" + caminho, Object.assign({}, opcoes, {
+    headers: Object.assign({ apikey:SUPABASE_KEY, Authorization:"Bearer " + t, "Content-Type":"application/json" }, (opcoes || {}).headers || {}) }));
+  if(!r.ok){
+    const txt = await r.text();
+    let msg = txt; try{ msg = JSON.parse(txt).message || txt; }catch(e){}
+    throw new Error(msg.slice(0, 160));
+  }
+  const t2 = await r.text();
+  return t2 ? JSON.parse(t2) : null;
+}
+function sair(){
+  sessao = null;
+  try{ localStorage.removeItem(SESSAO); }catch(e){}
+  mostrar("entrar");
+}
+
+/* ---------- telas ---------- */
+function mostrar(qual){
+  ["entrar","lista","carro"].forEach(t => $("#t-" + t).classList.toggle("oculto", t !== qual));
+  window.scrollTo(0, 0);
+}
+let tempoRecado = 0;
+function recado(msg){
+  const el = $("#recado");
+  el.textContent = msg; el.classList.remove("oculto");
+  clearTimeout(tempoRecado); tempoRecado = setTimeout(() => el.classList.add("oculto"), 3200);
+}
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const placaHTML = p => '<span class="placa"><span class="br">BRASIL</span><span class="num">' + esc(p || "—") + '</span></span>';
+
+/* ---------- entrar ---------- */
+$("#f-entrar").onsubmit = async e => {
+  e.preventDefault();
+  $("#e-erro").textContent = ""; $("#e-botao").disabled = true;
+  try{
+    guardarSessao(await auth("token?grant_type=password", { email:$("#e-email").value.trim(), password:$("#e-senha").value }));
+    await abrirLista();
+  }catch(err){
+    $("#e-erro").textContent = /invalid/i.test(err.message) ? "E-mail ou senha errados." : "Não entrou: " + err.message;
+  }finally{ $("#e-botao").disabled = false; }
+};
+
+/* ---------- lista ---------- */
+async function abrirLista(){
+  mostrar("lista");
+  $("#l-itens").innerHTML = '<div class="vazio">Carregando…</div>';
+  try{
+    carros = await api("rpc/fotos_pendentes", { method:"POST", body:"{}" }) || [];
+    pintarLista();
+  }catch(err){
+    $("#l-itens").innerHTML = '<div class="vazio">' + (/permiss|jwt|401/i.test(err.message)
+      ? "Este login não tem acesso ao modo fotos." : "Não carregou: " + esc(err.message)) +
+      '<br><br><button class="btn btn-s" onclick="abrirLista()">Tentar de novo</button></div>';
+  }
+}
+const feitas = c => ANGULOS.filter(a => (c.angulos || []).includes(a.id)).length;
+function pintarLista(){
+  const t = $("#l-busca").value.trim().toLowerCase().replace(/[^a-z0-9 ]/g, "");
+  const l = carros.filter(c => !t || (String(c.placa || "") + " " + String(c.modelo || "")).toLowerCase().replace(/[^a-z0-9 ]/g, "").includes(t));
+  if(!carros.length){ $("#l-itens").innerHTML = '<div class="vazio">Nenhum carro na base agora.</div>'; return; }
+  if(!l.length){ $("#l-itens").innerHTML = '<div class="vazio">Nenhum carro com essa busca.</div>'; return; }
+  /* quem ainda falta foto vem primeiro */
+  const falta = l.filter(c => feitas(c) < ANGULOS.length), prontos = l.filter(c => feitas(c) >= ANGULOS.length);
+  const item = c => {
+    const f = feitas(c), ok = f >= ANGULOS.length;
+    return '<button class="carro' + (ok ? " completo" : "") + '" data-id="' + c.id + '">' + placaHTML(c.placa) +
+      '<span class="info"><div class="modelo">' + esc(c.modelo || "Modelo não informado") + '</div>' +
+      '<div class="falta">' + (ok ? "✓ Fotos completas" : f ? "Faltam " + (ANGULOS.length - f) + " de " + ANGULOS.length : "Sem fotos") + '</div></span>' +
+      '<span class="seta">›</span></button>';
+  };
+  $("#l-itens").innerHTML =
+    (falta.length ? '<div class="secao">Falta foto · ' + falta.length + '</div>' + falta.map(item).join("") : "") +
+    (prontos.length ? '<div class="secao">Prontos · ' + prontos.length + '</div>' + prontos.map(item).join("") : "");
+}
+$("#l-busca").oninput = pintarLista;
+$("#l-atualizar").onclick = abrirLista;
+$("#l-sair").onclick = () => { if(!enviando || confirm("Ainda tem foto subindo. Sair mesmo assim?")) sair(); };
+$("#l-itens").onclick = e => {
+  const b = e.target.closest(".carro");
+  if(b) abrirCarro(carros.find(c => c.id === b.dataset.id));
+};
+
+/* ---------- um carro ---------- */
+function abrirCarro(c){
+  if(!c) return;
+  carro = c; fotos = {};
+  (c.angulos || []).forEach(a => { fotos[a] = { estado:"ok" }; });
+  /* começa no primeiro ângulo que ainda falta */
+  passo = ANGULOS.findIndex(a => !fotos[a.id]);
+  if(passo < 0) passo = ANGULOS.length;
+  $("#c-titulo").innerHTML = esc(c.placa || "") + ' <span style="font-weight:400;color:var(--tinta-2)">· ' + esc(c.modelo || "") + '</span>';
+  mostrar("carro");
+  pintarCarro();
+}
+$("#c-voltar").onclick = () => { abrirLista(); };
+
+function desenho(a){
+  if(a.dentro === "painel") return '<svg viewBox="0 0 200 120" aria-hidden="true">' +
+    '<rect x="10" y="20" width="180" height="70" rx="18" fill="none" stroke="currentColor" stroke-width="4"/>' +
+    '<circle cx="70" cy="55" r="22" fill="none" stroke="var(--verde)" stroke-width="5"/><circle cx="130" cy="55" r="22" fill="none" stroke="var(--verde)" stroke-width="5"/>' +
+    '<line x1="70" y1="55" x2="82" y2="42" stroke="var(--verde)" stroke-width="4" stroke-linecap="round"/><line x1="130" y1="55" x2="140" y2="66" stroke="var(--verde)" stroke-width="4" stroke-linecap="round"/>' +
+    '<text x="100" y="112" text-anchor="middle" font-size="15" fill="currentColor" font-weight="700">KM legível</text></svg>';
+  if(a.dentro === "bancos") return '<svg viewBox="0 0 200 120" aria-hidden="true">' +
+    '<rect x="30" y="20" width="55" height="80" rx="14" fill="none" stroke="var(--verde)" stroke-width="5"/>' +
+    '<rect x="115" y="20" width="55" height="80" rx="14" fill="none" stroke="var(--verde)" stroke-width="5"/>' +
+    '<rect x="40" y="8" width="35" height="14" rx="6" fill="currentColor"/><rect x="125" y="8" width="35" height="14" rx="6" fill="currentColor"/></svg>';
+  /* carro visto de cima, frente para cima; o ponto verde é onde a pessoa fica */
+  const cx = 100, cy = 130;
+  const ang = Math.atan2(cy - a.y, cx - a.x), dx = Math.cos(ang) * 26, dy = Math.sin(ang) * 26;
+  return '<svg viewBox="0 0 200 262" aria-hidden="true">' +
+    '<text x="100" y="64" text-anchor="middle" font-size="11" fill="var(--tinta-2)" font-weight="600">FRENTE</text>' +
+    '<rect x="66" y="70" width="68" height="122" rx="22" fill="var(--cartao)" stroke="currentColor" stroke-width="4"/>' +
+    '<path d="M74 100 Q100 88 126 100 L122 116 Q100 108 78 116 Z" fill="currentColor" opacity=".25"/>' +
+    '<path d="M78 166 Q100 172 122 166 L126 180 Q100 188 74 180 Z" fill="currentColor" opacity=".25"/>' +
+    '<rect x="60" y="88" width="8" height="18" rx="3" fill="currentColor"/><rect x="132" y="88" width="8" height="18" rx="3" fill="currentColor"/>' +
+    '<rect x="60" y="156" width="8" height="18" rx="3" fill="currentColor"/><rect x="132" y="156" width="8" height="18" rx="3" fill="currentColor"/>' +
+    '<text x="100" y="206" text-anchor="middle" font-size="11" fill="var(--tinta-2)" font-weight="600">TRASEIRA</text>' +
+    '<line x1="' + a.x + '" y1="' + a.y + '" x2="' + (a.x + dx) + '" y2="' + (a.y + dy) + '" stroke="var(--verde)" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 6"/>' +
+    '<circle cx="' + a.x + '" cy="' + a.y + '" r="13" fill="var(--verde)"/>' +
+    '<rect x="' + (a.x - 7) + '" y="' + (a.y - 5) + '" width="14" height="10" rx="2" fill="#fff"/><circle cx="' + a.x + '" cy="' + a.y + '" r="3" fill="var(--verde)"/>' +
+    '</svg>';
+}
+
+function pintarCarro(){
+  $("#c-trilha").innerHTML = ANGULOS.map((a, i) => {
+    const f = fotos[a.id];
+    return '<i class="' + (i === passo ? "atual" : f && f.estado === "pulada" ? "pulada" : f ? "feita" : "") + '"></i>';
+  }).join("");
+  const corpo = $("#c-corpo");
+  if(passo >= ANGULOS.length){
+    const n = ANGULOS.filter(a => fotos[a.id] && fotos[a.id].estado !== "pulada").length;
+    corpo.innerHTML = '<div class="fim"><h2>' + (n >= ANGULOS.length ? "Fotos completas ✓" : n + " de " + ANGULOS.length + " fotos") + '</h2>' +
+      '<div>' + (enviando ? "Aguarde terminar de subir antes de sair." : "Toque numa foto abaixo para refazer.") + '</div></div>' +
+      '<button class="btn btn-s btn-grande" id="c-extra" type="button">📷 Foto extra (avaria, detalhe)</button>' +
+      '<div class="linha-acoes"><button class="btn btn-v btn-grande" id="c-concluir" type="button">Concluir</button></div>';
+    $("#c-extra").onclick = () => tirar("extra");
+    $("#c-concluir").onclick = () => { if(enviando){ recado("Ainda subindo " + enviando + (enviando > 1 ? " fotos" : " foto") + "…"); return; } abrirLista(); };
+  }else{
+    const a = ANGULOS[passo], f = fotos[a.id];
+    corpo.innerHTML = '<div class="passo"><div class="num">Foto ' + (passo + 1) + ' de ' + ANGULOS.length + '</div>' +
+      '<h2>' + esc(a.nome) + '</h2><p class="dica">' + esc(a.dica) + '</p>' +
+      (f && f.foto ? '<img class="previa" src="' + f.foto + '" alt="">' : desenho(a)) +
+      '<button class="btn btn-p btn-grande" id="c-tirar" type="button">📷 ' + (f && f.estado !== "pulada" ? "Tirar de novo" : "Tirar foto") + '</button>' +
+      '<div class="linha-acoes">' +
+        (passo > 0 ? '<button class="btn btn-s" id="c-ant" type="button">‹ Anterior</button>' : '') +
+        '<button class="btn btn-s" id="c-pular" type="button">' + (f && f.estado !== "pulada" ? "Próxima ›" : "Pular") + '</button></div></div>';
+    $("#c-tirar").onclick = () => tirar(a.id);
+    $("#c-pular").onclick = () => {
+      if(!fotos[a.id]) fotos[a.id] = { estado:"pulada" };
+      irPara(passo + 1);
+    };
+    if($("#c-ant")) $("#c-ant").onclick = () => irPara(passo - 1);
+  }
+  /* grade: todas as fotos, com o estado de cada uma; tocar leva àquela */
+  const extras = Object.keys(fotos).filter(k => k.startsWith("extra:"));
+  $("#c-grade").innerHTML = ANGULOS.map((a, i) => {
+    const f = fotos[a.id];
+    const selo = !f ? "" : f.estado === "ok" ? '<span class="selo ok">✓</span>' : f.estado === "enviando" ? '<span class="selo ind">…</span>'
+      : f.estado === "erro" ? '<span class="selo err">!</span>' : '<span class="selo ind">–</span>';
+    return '<div class="mini' + (i === passo ? " atual" : "") + (f && f.foto ? " tem" : "") + '" data-passo="' + i + '">' + selo +
+      (f && f.foto ? '<img src="' + f.foto + '" alt="">' : "") + '<span class="rot">' + esc(a.nome) + '</span></div>';
+  }).join("") + extras.map(k => {
+    const f = fotos[k];
+    const selo = f.estado === "ok" ? '<span class="selo ok">✓</span>' : f.estado === "erro" ? '<span class="selo err">!</span>' : '<span class="selo ind">…</span>';
+    return '<div class="mini tem" data-extra="' + k + '">' + selo + '<img src="' + f.foto + '" alt=""></div>';
+  }).join("");
+  /* tocar num quadrinho leva àquela foto; se ela falhou ao subir, reenvia */
+  $("#c-grade").querySelectorAll("[data-passo]").forEach(m => m.onclick = () => {
+    const a = ANGULOS[Number(m.dataset.passo)], f = fotos[a.id];
+    if(f && f.estado === "erro" && f.blob) enviar(a.id, a.id, f.blob, f.miniBlob);
+    irPara(Number(m.dataset.passo));
+  });
+  $("#c-grade").querySelectorAll("[data-extra]").forEach(m => m.onclick = () => {
+    const f = fotos[m.dataset.extra];
+    if(f && f.estado === "erro") enviar(m.dataset.extra, "extra", f.blob, f.miniBlob);
+  });
+  $("#c-envios").textContent = enviando ? "Subindo " + enviando + (enviando > 1 ? " fotos…" : " foto…") : "";
+}
+function irPara(n){
+  passo = Math.max(0, Math.min(ANGULOS.length, n));
+  pintarCarro();
+  window.scrollTo({ top:0, behavior:"smooth" });
+}
+
+/* ---------- câmera e envio ---------- */
+let alvoFoto = null;
+function tirar(id){
+  alvoFoto = id;
+  const cam = $("#camera");
+  cam.value = "";
+  cam.click();
+}
+$("#camera").onchange = async e => {
+  const arq = e.target.files && e.target.files[0];
+  if(!arq || !alvoFoto || !carro) return;
+  const id = alvoFoto; alvoFoto = null;
+  try{
+    const blob = await comprimir(arq, 1280, .6);
+    const miniBlob = await comprimir(arq, 360, .6).catch(() => null);
+    const chave = id === "extra" ? "extra:" + Date.now() : id;
+    fotos[chave] = { foto: URL.createObjectURL(miniBlob || blob), estado:"enviando", blob, miniBlob };
+    /* não espera subir: já mostra a próxima foto, o envio segue por trás */
+    if(id !== "extra"){
+      const i = ANGULOS.findIndex(a => a.id === id);
+      const prox = ANGULOS.findIndex((a, k) => k > i && !fotos[a.id]);
+      passo = prox >= 0 ? prox : ANGULOS.length;
+    }
+    pintarCarro();
+    enviar(chave, id, blob, miniBlob);
+  }catch(err){ recado("Não consegui ler a foto. Tente de novo."); }
+};
+async function enviar(chave, angulo, blob, miniBlob){
+  const c = carro;
+  const f = fotos[chave];
+  if(f){ f.estado = "enviando"; }
+  enviando++; pintarCarroSeAberto(c);
+  try{
+    const nome = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
+    const t = await token();
+    const r = await fetch(SUPABASE_URL + "/storage/v1/object/fotos/" + nome + ".jpg", { method:"POST",
+      headers:{ apikey:SUPABASE_KEY, Authorization:"Bearer " + t, "Content-Type":"image/jpeg" }, body:blob });
+    if(!r.ok) throw new Error("a foto não subiu (" + r.status + ")");
+    /* a miniatura é o que o Pátio mostra na galeria; se falhar, ele usa a grande */
+    if(miniBlob) fetch(SUPABASE_URL + "/storage/v1/object/fotos/" + nome + ".m.jpg", { method:"POST",
+      headers:{ apikey:SUPABASE_KEY, Authorization:"Bearer " + t, "Content-Type":"image/jpeg", "x-upsert":"true" }, body:miniBlob }).catch(() => {});
+    await api("rpc/registrar_foto", { method:"POST", body:JSON.stringify({
+      p_veiculo:c.id, p_angulo:angulo, p_url:SUPABASE_URL + "/storage/v1/object/public/fotos/" + nome + ".jpg" }) });
+    if(f){ f.estado = "ok"; delete f.blob; delete f.miniBlob; }
+    if(angulo !== "extra" && !(c.angulos || []).includes(angulo)) c.angulos = (c.angulos || []).concat(angulo);
+  }catch(err){
+    if(f) f.estado = "erro";
+    recado("Uma foto não subiu: " + err.message + ". Toque nela para tentar de novo.");
+  }finally{
+    enviando--; pintarCarroSeAberto(c);
+  }
+}
+function pintarCarroSeAberto(c){ if(carro === c && !$("#t-carro").classList.contains("oculto")) pintarCarro(); }
+addEventListener("beforeunload", e => { if(enviando){ e.preventDefault(); e.returnValue = ""; } });
+
+/* foto de celular tem 4 MB: reduz antes de subir, igual ao Pátio */
+function comprimir(arquivo, largura, qualidade){
+  return new Promise((ok, falha) => {
+    const url = URL.createObjectURL(arquivo);
+    const img = new Image();
+    img.onerror = () => { URL.revokeObjectURL(url); falha(new Error("imagem inválida")); };
+    img.onload = () => {
+      const e = Math.min(1, largura / Math.max(img.width, img.height));
+      const tela = document.createElement("canvas");
+      tela.width = Math.round(img.width * e); tela.height = Math.round(img.height * e);
+      const g = tela.getContext("2d");
+      g.fillStyle = "#fff"; g.fillRect(0, 0, tela.width, tela.height);
+      g.drawImage(img, 0, 0, tela.width, tela.height);
+      URL.revokeObjectURL(url);
+      tela.toBlob(b => b ? ok(b) : falha(new Error("falha ao comprimir")), "image/jpeg", qualidade);
+    };
+    img.src = url;
+  });
+}
+
+/* ---------- início ---------- */
+sessao = lerSessao();
+if(sessao) abrirLista(); else mostrar("entrar");
+</script>
+</body>
+</html>

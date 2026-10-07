@@ -2891,6 +2891,9 @@ async function carregarPapel(){
     /* o banco só deixa "editor" gravar — e quem não tem perfil conta
        como guincheiro. Oferecer botão de editar a guincheiro ou
        visualizador só produzia erro na hora de salvar. */
+    /* guincheiro (ou login sem perfil) não usa o Pátio: vai para o modo fotos,
+       com a mesma sessão, e lá só vê placa e modelo */
+    if(!(r && r[0]) || r[0].papel === "guincheiro"){ location.replace("/modofotos"); return; }
     soLeitura = !(r && r[0] && r[0].papel === "editor");
   }catch(e){
     soLeitura = false;   /* sem tabela de perfis ainda: segue editor, e o banco continua mandando */
