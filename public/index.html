@@ -1033,6 +1033,26 @@ html[data-papel="leitura"] .tira-foto{display:none}
 .a-escuro i:first-child{background:#2E3A12} .a-escuro i:last-child{background:#FFF}
 .a-auto{background:linear-gradient(105deg,#FFFFFF 0 50%,#000000 50% 100%)}
 .a-auto i:first-child{background:#8FA84A} .a-auto i:last-child{background:#888}
+/* MENU RÁPIDO */
+.menu-rapido{position:fixed;z-index:200;min-width:14rem;background:var(--superficie);color:var(--rotulo);
+  border:1px solid var(--separador);border-radius:14px;box-shadow:var(--sombra-g,0 12px 32px rgba(0,0,0,.22));padding:.375rem;
+  font-size:.875rem;animation:mr-entra 120ms var(--saida,ease-out)}
+@keyframes mr-entra{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+.menu-rapido .mr-cab{display:flex;gap:.5rem;align-items:baseline;padding:.375rem .625rem .5rem;border-bottom:1px solid var(--separador);margin-bottom:.25rem}
+.menu-rapido .mr-cab b{font-family:"JetBrains Mono",ui-monospace,monospace}
+.menu-rapido .mr-cab span{color:var(--rotulo-3);font-size:.8125rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:11rem}
+.menu-rapido button{display:flex;align-items:center;gap:.5rem;width:100%;text-align:left;background:none;border:0;border-radius:9px;
+  padding:.5rem .625rem;font:inherit;color:inherit;cursor:pointer}
+.menu-rapido button:hover,.menu-rapido button:focus-visible{background:var(--fundo);outline:none}
+.menu-rapido hr{border:0;border-top:1px solid var(--separador);margin:.25rem 0}
+.menu-rapido .mr-pai span{margin-left:auto;color:var(--rotulo-3)}
+.menu-rapido .mr-sub{position:relative}
+.menu-rapido .mr-lista{display:none;position:absolute;left:100%;top:-.375rem;min-width:12rem;background:var(--superficie);
+  border:1px solid var(--separador);border-radius:14px;box-shadow:var(--sombra-g,0 12px 32px rgba(0,0,0,.22));padding:.375rem;margin-left:.25rem}
+.menu-rapido.sub-esq .mr-lista{left:auto;right:100%;margin:0 .25rem 0 0}
+.menu-rapido .mr-sub:hover .mr-lista,.menu-rapido .mr-sub:focus-within .mr-lista,.menu-rapido .mr-sub.aberto .mr-lista{display:block}
+.menu-rapido .mr-lista i{width:.625rem;height:.625rem;border-radius:99px;flex-shrink:0}
+@media (hover:none){ .menu-rapido .mr-lista{position:static;box-shadow:none;border:0;margin:0;padding:0 0 0 .75rem} }
 /* NÚMEROS — diárias e indicadores */
 .nm-topo{display:flex;flex-wrap:wrap;align-items:center;gap:.625rem;margin-bottom:1rem}
 .nm-topo h2{margin:0;font-size:1.25rem;font-weight:560;flex:1;min-width:10rem}
@@ -2256,7 +2276,7 @@ html[data-papel="leitura"] #bloco-avisos{display:none}
         <span class="so-largo">Próximos eventos</span><span class="so-estreito">Eventos</span> <span class="n" id="n-agenda">0</span></button>
       <button class="aba aba-ico" role="tab" aria-selected="false" data-aba="mapa" aria-label="Mapa das entregas">
         <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6.5-6.2 6.5-11a6.5 6.5 0 0 0-13 0c0 4.8 6.5 11 6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg></button>
-      <button class="aba aba-ico" role="tab" aria-selected="false" data-aba="numeros" aria-label="Números e diárias" title="Números e diárias">
+      <button class="aba aba-ico oculto" role="tab" aria-selected="false" data-aba="numeros" aria-label="Números e diárias" title="Números e diárias">
         <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></button>
       <button class="aba aba-ico" role="tab" aria-selected="false" data-aba="config" aria-label="Configurações">
         <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5h9M17 7.5h4M3 16.5h4M12 16.5h9"/><circle cx="14.5" cy="7.5" r="2.4"/><circle cx="9.5" cy="16.5" r="2.4"/></svg></button>
@@ -3407,6 +3427,171 @@ function contarNota(){
   const n = dlgNota.querySelector("#nota-txt").value.length;
   dlgNota.querySelector("#nota-conta").textContent = n >= NOTA_MAX - 40 ? n + "/" + NOTA_MAX : "";
 }
+/* =========================================================
+   MUDAR SITUAÇÃO — um caminho só, usado pela ficha e pelo menu
+   do botão direito. Em rota pede o motorista; Entregue pede quem
+   recebeu; Coletado registra a coleta. Devolve false se a pessoa
+   desistiu ou não salvou.
+   ========================================================= */
+const repintarSeAberto = v => { if(abertoId === v.id) repintarPainel(v); };
+async function mudarStatus(v, novo){
+  if(!v || novo === v.status) return false;
+  if(novo === "Em rota"){
+    const m = await escolherMotorista(v, v.motorista);
+    if(m === null) return false;
+    try{ await porEmRota(v, m, true); pintar(); repintarSeAberto(v);
+      recado("Em rota" + (m ? " com " + m : "") + (coletasDe(v).length ? " — fora de base junto" : "")); return true; }
+    catch(err){ recado("Não salvou: " + err.message); return false; }
+  }
+  if(novo === "Entregue"){
+    const r = await confirmarEntrega(v);
+    if(!r) return false;
+    const agora = new Date().toISOString();
+    try{
+      Object.assign(v, await atualizarVeiculo(v.id, { status: "Entregue", saida: agora,
+        recebedor: r.recebedor, entrega_local: r.local || null }));
+      dados.eventos.unshift(await inserirEvento({ veiculo: v.id, quando: agora, tipo: "Entrega concluída",
+        resultado: "Sucesso", motivo: "", obs: obsEntrega(r, v) }));
+      pintar(); repintarSeAberto(v); recado("Entregue — recebido por " + r.recebedor); return true;
+    }catch(err){ recado("Não salvou: " + err.message); return false; }
+  }
+  if(novo === "Coletado"){
+    const agora = new Date().toISOString();
+    try{
+      Object.assign(v, await atualizarVeiculo(v.id, { status: "Coletado" }));
+      dados.eventos.unshift(await inserirEvento({ veiculo: v.id, quando: agora, tipo: "Coleta realizada",
+        resultado: "Sucesso", motivo: "", obs: [v.origem ? "Em " + v.origem : "", v.motorista ? "Motorista: " + v.motorista : ""].filter(Boolean).join(" — ") }));
+      pintar(); repintarSeAberto(v); recado("Coletado" + (v.motorista ? " — com " + v.motorista : "")); return true;
+    }catch(err){ recado("Não salvou: " + err.message); return false; }
+  }
+  const antes = v.status;
+  try{
+    Object.assign(v, await atualizarVeiculo(v.id, { status: novo })); pintar(); repintarSeAberto(v);
+    recado((v.placa || "Veículo") + ": " + novo, { fazer: async () => {
+      try{ Object.assign(v, await atualizarVeiculo(v.id, { status: antes })); pintar(); repintarSeAberto(v); }catch(e){ recado("Não desfez: " + e.message); }
+    }});
+    return true;
+  }catch(err){ recado("Não salvou: " + err.message); return false; }
+}
+/* Fora de base → base. Vira veículo do pátio a partir de agora: entrada
+   com a hora de hoje (os dias na base contam daqui), status Na base, sai
+   da viagem de quem levaria junto, e a data/hora da coleta é limpa — a
+   saída do pátio é outra, marcada depois. Origem e destino ficam. */
+async function trazerParaBase(v){
+  const agora = new Date().toISOString();
+  const antes = { direta: true, status: v.status, junto: v.junto || null, entrada: v.entrada, data: v.data || null, hora: v.hora || null };
+  try{
+    Object.assign(v, await atualizarVeiculo(v.id, { direta: false, status: "Na base", junto: null,
+      entrada: agora, data: null, hora: null }));
+    dados.eventos.unshift(await inserirEvento({ veiculo: v.id, quando: agora, tipo: "Entrada na base",
+      resultado: "", motivo: "", obs: "Era agendamento fora de base" + (antes.status === "Coletado" && v.origem ? " — coletado em " + v.origem : "") }));
+    pintar(); repintarSeAberto(v);
+    recado((v.placa || "Veículo") + " agora está na base", { fazer: async () => {
+      try{ Object.assign(v, await atualizarVeiculo(v.id, antes)); pintar(); repintarSeAberto(v); recado("Desfeito"); }
+      catch(err){ recado("Não desfez: " + err.message); }
+    }});
+  }catch(err){ recado("Não salvou: " + err.message); }
+}
+
+/* =========================================================
+   MENU RÁPIDO (botão direito no cartão; no celular, toque longo)
+   O que mais se faz sem precisar abrir a ficha: mudar a situação,
+   copiar a OS, nota, fotos, relatório, arquivar.
+   ========================================================= */
+let menuRapido = null, menuDoId = null;
+function fecharMenuRapido(){ if(menuRapido){ menuRapido.remove(); menuRapido = null; menuDoId = null; } }
+function abrirMenuRapido(id, x, y){
+  const v = dados.veiculos.find(c => c.id === id);
+  if(!v) return;
+  fecharMenuRapido();
+  menuDoId = id;
+  const it = (acao, rotulo, extra) => '<button type="button" role="menuitem" data-mr="' + acao + '"' + (extra || "") + '>' + rotulo + '</button>';
+  const statusOk = STATUS.filter(s => s !== v.status && (s !== "Coletado" || v.direta));
+  const m = document.createElement("div");
+  m.className = "menu-rapido";
+  m.setAttribute("role", "menu");
+  m.innerHTML =
+    '<div class="mr-cab"><b>' + esc(v.placa || "—") + '</b><span>' + esc(v.modelo || "") + '</span></div>' +
+    it("abrir", "Abrir ficha") +
+    (soLeitura ? "" :
+      '<div class="mr-sub"><button type="button" role="menuitem" class="mr-pai" aria-haspopup="true">Mudar situação<span>›</span></button>' +
+        '<div class="mr-lista" role="menu">' + statusOk.map(s => '<button type="button" role="menuitem" data-mr="status" data-st="' + esc(s) + '">' +
+          '<i style="background:' + corDoStatus(s) + '"></i>' + esc(s) + '</button>').join("") + '</div></div>') +
+    it("os", "Copiar ordem de serviço") +
+    it("nota", temNota(v) ? "Editar nota" : "Colar nota") +
+    (soLeitura ? "" : it("fotos", "Adicionar fotos")) +
+    it("relatorio", "Relatório / laudo") +
+    (!soLeitura && v.direta && v.status !== "Entregue" ? it("base", "Trazer para a base") : "") +
+    (soLeitura ? "" : '<hr>' + it("arquivar", arquivado(v) ? "Tirar do arquivo" : "Arquivar"));
+  document.body.appendChild(m);
+  menuRapido = m;
+  /* cabe na tela: se passar da borda, abre para o outro lado */
+  const r = m.getBoundingClientRect();
+  m.style.left = Math.max(8, Math.min(x, innerWidth - r.width - 8)) + "px";
+  m.style.top = Math.max(8, Math.min(y, innerHeight - r.height - 8)) + "px";
+  if(x + r.width + 200 > innerWidth) m.classList.add("sub-esq");
+  const pai = m.querySelector(".mr-pai");
+  if(pai) pai.onclick = () => m.querySelector(".mr-sub").classList.toggle("aberto");
+  m.onclick = async e => {
+    const b = e.target.closest("[data-mr]");
+    if(!b) return;
+    const acao = b.dataset.mr, st = b.dataset.st;
+    fecharMenuRapido();
+    if(acao === "abrir") abrir(v.id);
+    else if(acao === "status") await mudarStatus(v, st);
+    else if(acao === "os") copiarOS(v.id);
+    else if(acao === "nota") abrirNota(v.id);
+    else if(acao === "fotos"){
+      const inp = document.createElement("input");
+      inp.type = "file"; inp.accept = "image/*"; inp.multiple = true;
+      inp.onchange = () => { if(inp.files && inp.files.length) anexarFotos(v.id, [...inp.files]); };
+      inp.click();
+    }
+    else if(acao === "relatorio") relatorioVeiculo(v);
+    else if(acao === "base") trazerParaBase(v);
+    else if(acao === "arquivar") alternarArquivo(v.id);
+  };
+  const primeiro = m.querySelector("[role=menuitem]");
+  if(primeiro) primeiro.focus({ preventScroll:true });
+}
+document.addEventListener("contextmenu", e => {
+  const c = e.target.closest("#lista-patio .cartao, #lista-agenda .evento");
+  if(!c || !c.dataset.id) return;
+  e.preventDefault();
+  abrirMenuRapido(c.dataset.id, e.clientX, e.clientY);
+});
+/* no celular não há botão direito: segurar o dedo meio segundo no cartão */
+let toqueLongo = null;
+document.addEventListener("touchstart", e => {
+  const c = e.target.closest("#lista-patio .cartao");
+  if(!c || e.touches.length !== 1) return;
+  const t = e.touches[0], x = t.clientX, y = t.clientY;
+  clearTimeout(toqueLongo);
+  toqueLongo = setTimeout(() => { toqueLongo = "feito"; abrirMenuRapido(c.dataset.id, x, y); if(navigator.vibrate) navigator.vibrate(15); }, 550);
+}, { passive:true });
+["touchmove","touchcancel"].forEach(t => document.addEventListener(t, () => {
+  if(toqueLongo === "feito") return;
+  clearTimeout(toqueLongo); toqueLongo = null;
+}, { passive:true }));
+document.addEventListener("touchend", e => {
+  if(toqueLongo === "feito"){ e.preventDefault(); toqueLongo = null; return; }   /* não abre a ficha junto */
+  clearTimeout(toqueLongo); toqueLongo = null;
+}, { passive:false });
+document.addEventListener("pointerdown", e => { if(menuRapido && !menuRapido.contains(e.target)) fecharMenuRapido(); }, true);
+document.addEventListener("keydown", e => {
+  if(!menuRapido) return;
+  if(e.key === "Escape"){ e.stopPropagation(); fecharMenuRapido(); return; }
+  if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+    e.preventDefault();
+    const itens = [...menuRapido.querySelectorAll("[role=menuitem]")].filter(b => b.offsetParent);
+    const i = itens.indexOf(document.activeElement);
+    const n = itens[(i + (e.key === "ArrowDown" ? 1 : -1) + itens.length) % itens.length];
+    if(n) n.focus();
+  }
+}, true);
+addEventListener("scroll", fecharMenuRapido, { passive:true });
+addEventListener("resize", fecharMenuRapido);
+
 function abrirNota(id, origem){
   const v = dados.veiculos.find(x => x.id === id);
   if(!v) return;
@@ -5709,40 +5894,7 @@ function ligarPainel(v){
     return;
   }
   $("#p-status").onchange = async e => {
-    if(e.target.value === "Em rota" && v.status !== "Em rota"){
-      const m = await escolherMotorista(v, v.motorista);
-      if(m === null){ e.target.value = v.status; return; }      /* desistiu: volta como estava */
-      try{ await porEmRota(v, m, true); pintar(); repintarPainel(v);
-        recado("Em rota" + (m ? " com " + m : "") + (coletasDe(v).length ? " — fora de base junto" : "")); }
-      catch(err){ e.target.value = v.status; recado("Não salvou: " + err.message); }
-      return;
-    }
-    if(e.target.value === "Entregue" && v.status !== "Entregue"){
-      const r = await confirmarEntrega(v);
-      if(!r){ e.target.value = v.status; return; }               /* desistiu: volta como estava */
-      const agora = new Date().toISOString();
-      try{
-        Object.assign(v, await atualizarVeiculo(v.id, { status: "Entregue", saida: agora,
-          recebedor: r.recebedor, entrega_local: r.local || null }));
-        dados.eventos.unshift(await inserirEvento({ veiculo: v.id, quando: agora, tipo: "Entrega concluída",
-          resultado: "Sucesso", motivo: "", obs: obsEntrega(r, v) }));
-        pintar(); repintarPainel(v); recado("Entregue — recebido por " + r.recebedor);
-      }catch(err){ e.target.value = v.status; recado("Não salvou: " + err.message); }
-      return;
-    }
-    if(e.target.value === "Coletado" && v.status !== "Coletado"){
-      const agora = new Date().toISOString();
-      try{
-        Object.assign(v, await atualizarVeiculo(v.id, { status: "Coletado" }));
-        dados.eventos.unshift(await inserirEvento({ veiculo: v.id, quando: agora, tipo: "Coleta realizada",
-          resultado: "Sucesso", motivo: "", obs: [v.origem ? "Em " + v.origem : "", v.motorista ? "Motorista: " + v.motorista : ""].filter(Boolean).join(" — ") }));
-        pintar(); repintarPainel(v); recado("Coletado" + (v.motorista ? " — com " + v.motorista : ""));
-      }catch(err){ e.target.value = v.status; recado("Não salvou: " + err.message); }
-      return;
-    }
-    const campos = { status: e.target.value };
-    try{ Object.assign(v, await atualizarVeiculo(v.id, campos)); pintar(); recado("Status atualizado"); }
-    catch(err){ recado("Não salvou: " + err.message); }
+    if(!(await mudarStatus(v, e.target.value))) e.target.value = v.status;   /* desistiu ou falhou: volta */
   };
   $("#e-tipo").onchange = e => $("#env-motivo").classList.toggle("oculto", e.target.value !== "Tentativa de entrega");
   const pm = $("#p-motorista");
@@ -5800,21 +5952,7 @@ function ligarPainel(v){
      da viagem de quem levaria junto, e a data/hora da coleta é limpa — a
      saída do pátio é outra, marcada depois. Origem e destino ficam. */
   const pb = $("#p-para-base");
-  if(pb) pb.onclick = () => pedeConfirmacao(pb, "Confirmar: trazer para a base?", async () => {
-    const agora = new Date().toISOString();
-    const antes = { direta: true, status: v.status, junto: v.junto || null, entrada: v.entrada, data: v.data || null, hora: v.hora || null };
-    try{
-      Object.assign(v, await atualizarVeiculo(v.id, { direta: false, status: "Na base", junto: null,
-        entrada: agora, data: null, hora: null }));
-      dados.eventos.unshift(await inserirEvento({ veiculo: v.id, quando: agora, tipo: "Entrada na base",
-        resultado: "", motivo: "", obs: "Era agendamento fora de base" + (antes.status === "Coletado" && v.origem ? " — coletado em " + v.origem : "") }));
-      pintar(); repintarPainel(v);
-      recado((v.placa || "Veículo") + " agora está na base", { fazer: async () => {
-        try{ Object.assign(v, await atualizarVeiculo(v.id, antes)); pintar(); repintarPainel(v); recado("Desfeito"); }
-        catch(err){ recado("Não desfez: " + err.message); }
-      }});
-    }catch(err){ recado("Não salvou: " + err.message); }
-  });
+  if(pb) pb.onclick = () => pedeConfirmacao(pb, "Confirmar: trazer para a base?", () => trazerParaBase(v));
   const lje = $("#lj-escolhe");
   if(lje) lje.onchange = () => { const c = dados.veiculos.find(x => x.id === lje.value); if(c) mudarJunto(c, v.id); };
   painel.querySelectorAll("[data-tira-junto]").forEach(bt => {
