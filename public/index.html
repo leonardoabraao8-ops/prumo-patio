@@ -1033,6 +1033,36 @@ html[data-papel="leitura"] .tira-foto{display:none}
 .a-escuro i:first-child{background:#2E3A12} .a-escuro i:last-child{background:#FFF}
 .a-auto{background:linear-gradient(105deg,#FFFFFF 0 50%,#000000 50% 100%)}
 .a-auto i:first-child{background:#8FA84A} .a-auto i:last-child{background:#888}
+/* NÚMEROS — diárias e indicadores */
+.nm-topo{display:flex;flex-wrap:wrap;align-items:center;gap:.625rem;margin-bottom:1rem}
+.nm-topo h2{margin:0;font-size:1.25rem;font-weight:560;flex:1;min-width:10rem}
+.nm-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr));gap:.625rem;margin-bottom:1.5rem}
+.nm-card{background:var(--superficie);border:1px solid var(--separador);border-radius:var(--raio);padding:.875rem 1rem}
+.nm-card b{display:block;font-size:1.75rem;font-weight:560;letter-spacing:-.02em;line-height:1.1}
+.nm-card span{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.6875rem;letter-spacing:.06em;text-transform:uppercase;color:var(--rotulo-3)}
+.nm-sec{margin:1.75rem 0 .75rem;display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap}
+.nm-sec h3{margin:0;font-size:1rem;font-weight:600}
+.nm-sec small{color:var(--rotulo-3);font-size:.8125rem;flex:1}
+.nm-grupo{background:var(--superficie);border:1px solid var(--separador);border-radius:var(--raio);margin-bottom:.75rem;overflow:hidden}
+.nm-gcab{display:flex;align-items:center;gap:.625rem;padding:.75rem 1rem;border-bottom:1px solid var(--separador);font-weight:560}
+.nm-gcab .tot{margin-left:auto;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.8125rem}
+.nm-linha{display:grid;grid-template-columns:auto 1fr auto auto;gap:.375rem .875rem;align-items:center;padding:.625rem 1rem;border-top:1px solid var(--separador);font-size:.875rem}
+.nm-linha:first-of-type{border-top:0}
+.nm-linha .pl{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:600;cursor:pointer;text-decoration:underline;text-decoration-color:var(--separador);text-underline-offset:3px}
+.nm-linha .mod{min-width:0}
+.nm-linha .mod small{display:block;color:var(--rotulo-3);font-size:.75rem}
+.nm-linha .qt{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:600;white-space:nowrap}
+.nm-linha .ac{display:flex;gap:.375rem}
+.nm-linha .ac button{font-size:.75rem;padding:.3125rem .625rem;min-height:0}
+.nm-pt{font-size:.625rem;font-weight:700;background:var(--vermelho,#C62828);color:#fff;border-radius:4px;padding:.0625rem .3125rem;margin-left:.375rem;vertical-align:1px}
+.nm-tab{width:100%;border-collapse:collapse;font-size:.875rem;background:var(--superficie);border:1px solid var(--separador);border-radius:var(--raio);overflow:hidden}
+.nm-tab th,.nm-tab td{text-align:left;padding:.5rem .875rem;border-top:1px solid var(--separador)}
+.nm-tab th:not(:first-child){text-align:right}
+.nm-tab th{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.6875rem;letter-spacing:.06em;text-transform:uppercase;color:var(--rotulo-3);font-weight:500;border-top:0}
+.nm-tab td.n{font-family:"JetBrains Mono",ui-monospace,monospace;text-align:right}
+.nm-vazio{color:var(--rotulo-3);font-size:.875rem;padding:.75rem 0}
+.nm-cobradas summary{cursor:pointer;color:var(--rotulo-3);font-size:.875rem;padding:.5rem 0}
+@media (max-width:560px){ .nm-linha{grid-template-columns:auto 1fr auto} .nm-linha .ac{grid-column:1/-1;justify-content:flex-end} }
 .grupo-conf{margin:1.75rem 0 .875rem;font-family:"JetBrains Mono",ui-monospace,monospace;
   font-size:.6875rem;font-weight:400;color:var(--rotulo-3);text-transform:uppercase;letter-spacing:.06em}
 /* esboço do cartão: placa em preto, os dois logos coloridos, a contagem à direita */
@@ -2226,6 +2256,8 @@ html[data-papel="leitura"] #bloco-avisos{display:none}
         <span class="so-largo">Próximos eventos</span><span class="so-estreito">Eventos</span> <span class="n" id="n-agenda">0</span></button>
       <button class="aba aba-ico" role="tab" aria-selected="false" data-aba="mapa" aria-label="Mapa das entregas">
         <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6.5-6.2 6.5-11a6.5 6.5 0 0 0-13 0c0 4.8 6.5 11 6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg></button>
+      <button class="aba aba-ico" role="tab" aria-selected="false" data-aba="numeros" aria-label="Números e diárias" title="Números e diárias">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></button>
       <button class="aba aba-ico" role="tab" aria-selected="false" data-aba="config" aria-label="Configurações">
         <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5h9M17 7.5h4M3 16.5h4M12 16.5h9"/><circle cx="14.5" cy="7.5" r="2.4"/><circle cx="9.5" cy="16.5" r="2.4"/></svg></button>
       <span class="barra" id="barra"></span>
@@ -2428,6 +2460,8 @@ html[data-papel="leitura"] #bloco-avisos{display:none}
       <div id="mapa"></div>
     </div>
   </section>
+
+  <section id="p-numeros" class="oculto"><div id="numeros"></div></section>
 
   <section id="p-config" class="oculto">
     <div class="folha">
@@ -4354,12 +4388,24 @@ function relatorioSimples(){
    de seguradora ou imprimir e guardar: os mesmos campos, o
    histórico e as fotos no fim.
    ========================================================= */
-function blocoFotosRelatorio(fotos){
+/* fotos tiradas pelo modo fotos têm posição gravada: no relatório elas
+   vêm primeiro, na ordem da volta no carro e com o nome da posição —
+   é o laudo de entrada no formato que a seguradora pede */
+const POSICOES_FOTO = [["frente","Frente"],["diag_de","Dianteira esquerda"],["diag_te","Traseira esquerda"],["traseira","Traseira"],
+  ["diag_td","Traseira direita"],["diag_dd","Dianteira direita"],["painel","Painel / KM"],["interior","Bancos"],["extra","Extra"]];
+function blocoFotosRelatorio(fotos, registro){
   if(!fotos.length) return "";
-  return '<div class="rl-fotos"><span class="rl-fotos-tit">Fotos — ' + fotos.length + '</span>' +
-    '<div class="rl-tira">' + fotos.map((u,i) =>
-      '<figure><img src="' + esc(u) + '" alt="Foto ' + (i+1) + '">' +
-      '<figcaption>' + (i+1) + '</figcaption></figure>').join("") + '</div></div>';
+  const rot = {}, ordem = {};
+  (registro || []).forEach(r => {
+    const i = POSICOES_FOTO.findIndex(p => p[0] === r.angulo);
+    if(i >= 0 && fotos.includes(r.url)){ rot[r.url] = POSICOES_FOTO[i][1]; ordem[r.url] = i; }
+  });
+  const lista = fotos.slice().sort((a, b) => (a in ordem ? ordem[a] : 99) - (b in ordem ? ordem[b] : 99));
+  const laudo = Object.keys(rot).length;
+  return '<div class="rl-fotos"><span class="rl-fotos-tit">' + (laudo ? 'Laudo fotográfico de entrada — ' : 'Fotos — ') + fotos.length + '</span>' +
+    '<div class="rl-tira">' + lista.map((u,i) =>
+      '<figure><img src="' + esc(u) + '" alt="' + esc(rot[u] || "Foto " + (i+1)) + '">' +
+      '<figcaption>' + esc(rot[u] || String(i+1)) + '</figcaption></figure>').join("") + '</div></div>';
 }
 /* Imprimir antes das fotos carregarem sai com retângulos vazios, e o
    usuário só descobre no papel. Espera cada uma resolver — inclusive as
@@ -4382,6 +4428,8 @@ async function relatorioVeiculo(v){
   const m = marcaSeguradora(v.seguradora);
   const c = m.central && CENTRAIS[m.central];
   const fotos = lerFotos(v);
+  let registro = [];
+  try{ registro = await api("fotos_registro?veiculo=eq." + v.id + "&select=angulo,url") || []; }catch(e){}
   const hist = dados.eventos.filter(e => e.veiculo === v.id)
     .sort((a,b) => b.quando.localeCompare(a.quando));
   const linha = (r,x) => x ? '<div class="rl-par"><span>' + r + '</span>' + esc(x) + '</div>' : '';
@@ -4410,7 +4458,7 @@ async function relatorioVeiculo(v){
         '<div>' + fmtCarimbo(e.quando) + ' — ' + esc(e.tipo) +
         (e.resultado === "Falha" ? ' (falhou: ' + esc(e.motivo || "sem motivo") + ')' : '') +
         (e.obs ? ' — ' + esc(e.obs) : '') + '</div>').join("") + '</div>' : '') +
-      blocoFotosRelatorio(fotos) +
+      blocoFotosRelatorio(fotos, registro) +
     '</section>';
   if(fotos.length) recado("Carregando " + fotos.length + (fotos.length > 1 ? " fotos…" : " foto…"));
   const todas = await esperarImagens($("#folha-papel"));
@@ -5524,7 +5572,7 @@ const ROTULO_CAMPO = { placa:"placa", modelo:"modelo", ano:"ano", cor:"cor", seg
   assistencia:"nº da assistência", condicao:"condição", guincheiro:"guincheiro", pt:"perda total",
   travado:"travado", avarias:"avarias", status:"situação", destino:"destino", cidade:"cidade",
   data:"data de saída", hora:"hora", obs:"observações", nota:"nota", motorista:"motorista da saída", recebedor:"quem recebeu", entrega_local:"local da entrega", origem:"origem", direta:"fora de base", junto:"vai junto com", entrada:"entrada", saida:"saída",
-  arquivado:"arquivado", tipo:"tipo do evento", quando:"quando", resultado:"resultado", motivo:"motivo" };
+  arquivado:"arquivado", diarias_cobradas:"diárias cobradas", tipo:"tipo do evento", quando:"quando", resultado:"resultado", motivo:"motivo" };
 function valorLegivel(campo, v){
   if(v === null || v === "") return "vazio";
   if(v === "true") return "sim";
@@ -8116,11 +8164,144 @@ if(btnEnquadrar) btnEnquadrar.onclick = () => {
   if(p.length) telaMapa.fitBounds(p, { padding:[40,40], maxZoom:13 });
 };
 
+/* =========================================================
+   NÚMEROS — diárias e indicadores
+   A Prumo cobra diária de pátio por veículo, quando a seguradora
+   arruma o destino definitivo e o carro sai. Diária conta o dia
+   da entrada e o da saída (entrou dia 1, saiu dia 4 = 4 diárias).
+   Fora de base nunca ocupou vaga: fica de fora de tudo aqui.
+   "Cobrada" é um carimbo por veículo, para nada escapar.
+   ========================================================= */
+const NUM_PERIODO = "prumo-numeros-periodo-v1";
+let numPeriodo = recuperar(NUM_PERIODO) || "30";
+const PERIODOS = { "30":"Últimos 30 dias", "mes":"Este mês", "mesant":"Mês passado", "90":"Últimos 90 dias", "tudo":"Tudo" };
+function faixaPeriodo(){
+  const h = new Date(), ini = new Date(h.getFullYear(), h.getMonth(), h.getDate());
+  if(numPeriodo === "30") return [new Date(ini - 29*86400000), null];
+  if(numPeriodo === "90") return [new Date(ini - 89*86400000), null];
+  if(numPeriodo === "mes") return [new Date(h.getFullYear(), h.getMonth(), 1), null];
+  if(numPeriodo === "mesant") return [new Date(h.getFullYear(), h.getMonth()-1, 1), new Date(h.getFullYear(), h.getMonth(), 1)];
+  return [null, null];
+}
+const noPeriodo = iso => {
+  if(!iso) return false;
+  const d = new Date(iso), [a, b] = faixaPeriodo();
+  return (!a || d >= a) && (!b || d < b);
+};
+const daBase = v => !v.direta;
+const diarias = v => diasNaBase(v.entrada, fimDaEstadia(v)) + 1;
+const saidaDe = v => fimDaEstadia(v);
+function textoDiarias(lista, seg){
+  return "*Diárias de pátio — Prumo*" + (seg ? "\n" + seg : "") + "\n\n" + lista.map(v =>
+    "Placa: " + (v.placa || "—") + "\nVeículo: " + (v.modelo || "—") +
+    (v.assistencia ? "\nAssistência: " + v.assistencia : "") +
+    "\nEntrada: " + fmtData(paraDia(v.entrada)) + "\nSaída: " + (saidaDe(v) ? fmtData(paraDia(saidaDe(v))) : "ainda no pátio") +
+    "\nTotal: " + diarias(v) + (diarias(v) > 1 ? " diárias" : " diária")).join("\n\n") +
+    (lista.length > 1 ? "\n\n*Total geral: " + lista.reduce((t, v) => t + diarias(v), 0) + " diárias*" : "");
+}
+function pintarNumeros(){
+  const alvo = $("#numeros");
+  if(!alvo) return;
+  const vs = dados.veiculos.filter(daBase);
+  const naBase = vs.filter(v => v.status !== "Entregue");
+  const sairam = vs.filter(v => v.status === "Entregue" && noPeriodo(saidaDe(v)));
+  const entraram = vs.filter(v => noPeriodo(v.entrada));
+  const aCobrar = sairam.filter(v => !v.diarias_cobradas);
+  const cobradas = sairam.filter(v => v.diarias_cobradas);
+  const media = sairam.length ? (sairam.reduce((t, v) => t + diarias(v), 0) / sairam.length) : 0;
+  const card = (n, r) => '<div class="nm-card"><b>' + n + '</b><span>' + r + '</span></div>';
+  const porSeg = l => {
+    const g = {};
+    l.forEach(v => { const k = (v.seguradora || "Sem seguradora").trim(); (g[k] = g[k] || []).push(v); });
+    return Object.entries(g).sort((a, b) => b[1].reduce((t,v)=>t+diarias(v),0) - a[1].reduce((t,v)=>t+diarias(v),0));
+  };
+  const linha = (v, modo) => '<div class="nm-linha">' +
+    '<span class="pl" data-abre-ficha="' + v.id + '">' + esc(v.placa || "—") + '</span>' +
+    '<span class="mod">' + esc(v.modelo || "—") + (v.pt ? '<span class="nm-pt">PT</span>' : '') +
+      '<small>' + fmtData(paraDia(v.entrada)) + ' → ' + (saidaDe(v) ? fmtData(paraDia(saidaDe(v))) : "hoje") +
+      (v.assistencia ? ' · ' + esc(v.assistencia) : '') + '</small></span>' +
+    '<span class="qt">' + diarias(v) + (diarias(v) > 1 ? ' diárias' : ' diária') + '</span>' +
+    '<span class="ac"><button class="btn btn-s" data-copiar-diaria="' + v.id + '">Copiar</button>' +
+      (modo && !soLeitura ? '<button class="btn btn-s" data-cobrar="' + v.id + '" data-valor="' + (modo === "cobrar" ? "1" : "") + '">' +
+        (modo === "cobrar" ? "Marcar cobrada" : "Desmarcar") + '</button>' : '') + '</span></div>';
+  const grupos = (l, modo) => porSeg(l).map(([seg, lista]) =>
+    '<div class="nm-grupo"><div class="nm-gcab">' + esc(seg) +
+      '<button class="btn btn-s" style="font-size:.75rem;padding:.3125rem .625rem;min-height:0" data-copiar-seg="' + esc(seg) + '" data-lista="' + lista.map(v => v.id).join(",") + '">Copiar todas</button>' +
+      '<span class="tot">' + lista.length + (lista.length > 1 ? ' veículos · ' : ' veículo · ') + lista.reduce((t, v) => t + diarias(v), 0) + ' diárias</span></div>' +
+      lista.sort((a, b) => diarias(b) - diarias(a)).map(v => linha(v, modo)).join("") + '</div>').join("");
+
+  /* por seguradora e por motorista, no período */
+  const tabSeg = porSeg(sairam).map(([seg, l]) => '<tr><td>' + esc(seg) + '</td><td class="n">' + l.length + '</td><td class="n">' +
+    (l.reduce((t, v) => t + diarias(v), 0) / l.length).toFixed(1).replace(".", ",") + '</td><td class="n">' + l.reduce((t, v) => t + diarias(v), 0) + '</td><td class="n">' + l.filter(v => v.pt).length + '</td></tr>').join("");
+  const mot = {};
+  sairam.forEach(v => { const k = v.motorista || "Não informado"; mot[k] = (mot[k] || 0) + 1; });
+  const tabMot = Object.entries(mot).sort((a, b) => b[1] - a[1]).map(([m, n]) => '<tr><td>' + esc(m) + '</td><td class="n">' + n + '</td></tr>').join("");
+  const fal = {};
+  dados.eventos.filter(e => e.resultado === "Falha" && noPeriodo(e.quando)).forEach(e => { const k = e.motivo || "Sem motivo"; fal[k] = (fal[k] || 0) + 1; });
+  const tabFal = Object.entries(fal).sort((a, b) => b[1] - a[1]).map(([m, n]) => '<tr><td>' + esc(m) + '</td><td class="n">' + n + '</td></tr>').join("");
+
+  alvo.innerHTML =
+    '<div class="nm-topo"><h2>Números e diárias</h2>' +
+      '<select class="selecao" id="nm-periodo" aria-label="Período">' + Object.entries(PERIODOS).map(([k, r]) =>
+        '<option value="' + k + '"' + (k === numPeriodo ? ' selected' : '') + '>' + r + '</option>').join("") + '</select>' +
+      '<button class="btn btn-s" id="nm-csv">Exportar diárias</button></div>' +
+    '<div class="nm-cards">' +
+      card(naBase.length, "na base agora") +
+      card(naBase.reduce((t, v) => t + diarias(v), 0), "diárias correndo") +
+      card(naBase.filter(v => v.pt).length, "PT na base") +
+      card(entraram.length, "entraram") +
+      card(sairam.length, "saíram") +
+      card(media ? media.toFixed(1).replace(".", ",") : "—", "diárias por carro") +
+    '</div>' +
+    '<div class="nm-sec"><h3>A cobrar</h3><small>Saíram no período e ainda não foram marcados como cobrados</small></div>' +
+    (aCobrar.length ? grupos(aCobrar, "cobrar") : '<p class="nm-vazio">Nada pendente de cobrança neste período.</p>') +
+    (cobradas.length ? '<details class="nm-cobradas"><summary>Já cobradas · ' + cobradas.length + '</summary>' + grupos(cobradas, "desfazer") + '</details>' : '') +
+    '<div class="nm-sec"><h3>Na base, acumulando</h3><small>Diárias até hoje, contando o dia de hoje</small></div>' +
+    (naBase.length ? grupos(naBase, null) : '<p class="nm-vazio">Nenhum carro na base.</p>') +
+    '<div class="nm-sec"><h3>Por seguradora</h3><small>Carros que saíram no período</small></div>' +
+    (tabSeg ? '<table class="nm-tab"><tr><th>Seguradora</th><th>Carros</th><th>Média</th><th>Diárias</th><th>PT</th></tr>' + tabSeg + '</table>' : '<p class="nm-vazio">Nenhuma saída no período.</p>') +
+    '<div class="nm-sec"><h3>Entregas por motorista</h3><small>No período</small></div>' +
+    (tabMot ? '<table class="nm-tab"><tr><th>Motorista</th><th>Entregas</th></tr>' + tabMot + '</table>' : '<p class="nm-vazio">Nenhuma entrega no período.</p>') +
+    '<div class="nm-sec"><h3>Tentativas sem sucesso</h3><small>Por motivo, no período</small></div>' +
+    (tabFal ? '<table class="nm-tab"><tr><th>Motivo</th><th>Vezes</th></tr>' + tabFal + '</table>' : '<p class="nm-vazio">Nenhuma tentativa falhou no período.</p>');
+
+  $("#nm-periodo").onchange = e => { numPeriodo = e.target.value; guardar(NUM_PERIODO, numPeriodo); pintarNumeros(); };
+  $("#nm-csv").onclick = () => {
+    const l = sairam.concat(naBase);
+    if(!l.length){ recado("Nada para exportar neste período"); return; }
+    baixarCSV("diarias-prumo_" + carimboArquivo() + ".csv", [["Placa","Modelo","Seguradora","Assistência","Entrada","Saída","Diárias","Perda total","Situação","Cobrada em"]]
+      .concat(l.map(v => [v.placa, v.modelo, v.seguradora, v.assistencia, fmtData(paraDia(v.entrada)),
+        saidaDe(v) ? fmtData(paraDia(saidaDe(v))) : "", diarias(v), v.pt ? "sim" : "", v.status === "Entregue" ? "Saiu" : "Na base",
+        v.diarias_cobradas ? fmtData(paraDia(v.diarias_cobradas)) : ""])));
+    recado(l.length + (l.length > 1 ? " veículos exportados" : " veículo exportado"));
+  };
+  alvo.querySelectorAll("[data-abre-ficha]").forEach(b => b.onclick = () => abrir(b.dataset.abreFicha));
+  alvo.querySelectorAll("[data-copiar-diaria]").forEach(b => b.onclick = async () => {
+    const v = dados.veiculos.find(x => x.id === b.dataset.copiarDiaria);
+    recado(await copiar(textoDiarias([v], v.seguradora)) ? "Diárias de " + (v.placa || "veículo") + " copiadas" : "Não consegui copiar");
+  });
+  alvo.querySelectorAll("[data-copiar-seg]").forEach(b => b.onclick = async () => {
+    const l = b.dataset.lista.split(",").map(id => dados.veiculos.find(x => x.id === id)).filter(Boolean);
+    recado(await copiar(textoDiarias(l, b.dataset.copiarSeg)) ? l.length + " veículos copiados — cole no WhatsApp ou e-mail" : "Não consegui copiar");
+  });
+  alvo.querySelectorAll("[data-cobrar]").forEach(b => b.onclick = async () => {
+    const v = dados.veiculos.find(x => x.id === b.dataset.cobrar);
+    const antes = v.diarias_cobradas || null;
+    try{
+      Object.assign(v, await atualizarVeiculo(v.id, { diarias_cobradas: b.dataset.valor ? new Date().toISOString() : null }));
+      pintarNumeros();
+      recado(v.diarias_cobradas ? (v.placa || "Veículo") + " marcado como cobrado" : "Cobrança desmarcada", { fazer: async () => {
+        try{ Object.assign(v, await atualizarVeiculo(v.id, { diarias_cobradas: antes })); pintarNumeros(); }catch(e){ recado("Não desfez: " + e.message); }
+      }});
+    }catch(err){ recado("Não salvou: " + err.message); }
+  });
+}
 function trocarAba(nome){
   if(soLeitura && nome === "entrada") nome = "patio";
   const botao = document.querySelector('.aba[data-aba="'+nome+'"]');
   document.querySelectorAll(".aba").forEach(b => b.setAttribute("aria-selected", String(b.dataset.aba === nome)));
-  ["patio","agenda","entrada","mapa","config"].forEach(n => $("#p-"+n).classList.toggle("oculto", n !== nome));
+  ["patio","agenda","entrada","mapa","numeros","config"].forEach(n => $("#p-"+n).classList.toggle("oculto", n !== nome));
+  if(nome === "numeros") pintarNumeros();
   /* a que entra é a única que anima: manter as duas na tela por 0,28s só
      para cruzar não muda nada que o olho pegue, e dobra o que se redesenha */
   const entrando = $("#p-"+nome);
@@ -8143,7 +8324,7 @@ function trocarAba(nome){
   }
   moverBarra(botao);
 }
-function pintar(){ pintarIndicadores(); pintarPatio(); pintarAgenda(); medirTopo(); }
+function pintar(){ pintarIndicadores(); pintarPatio(); pintarAgenda(); medirTopo(); if(!$("#p-numeros").classList.contains("oculto")) pintarNumeros(); }
 
 /* =========================================================
    ATUALIZAÇÃO SOZINHA
