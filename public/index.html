@@ -5935,7 +5935,18 @@ function ligarPainel(v){
       recado("Saída atualizada");
     }catch(err){ recado("Não salvou: " + err.message); }
   };
-  ["#s-origem","#s-dest","#s-cidade","#s-ponto","#s-data","#s-hora"].forEach(id => { const el = $(id); if(el) el.onchange = salvarSaida; });
+  ["#s-origem","#s-dest","#s-cidade","#s-data","#s-hora"].forEach(id => { const el = $(id); if(el) el.onchange = salvarSaida; });
+  const sp = $("#s-ponto");
+  if(sp){
+    let lido = sp.value.trim();
+    const ler = async () => {
+      if(sp.value.trim() === lido) return;
+      await preencherPeloPonto(sp, $("#s-dest"), $("#s-cidade"));
+      lido = sp.value.trim(); conferePonto(); salvarSaida();
+    };
+    sp.onchange = ler;
+    sp.addEventListener("paste", () => setTimeout(ler, 0));
+  }
   /* vínculo de viagem */
   const mudarJunto = async (coleta, para) => {
     try{
@@ -5969,7 +5980,7 @@ function ligarPainel(v){
     ajudaPt.classList.toggle("errado", !!bruto && !c);
     ajudaPt.textContent = c ? "Ponto reconhecido: " + c.lat.toFixed(5) + ", " + c.lon.toFixed(5) + " — o mapa usa isto e ignora o endereço."
       : bruto ? (/maps\.app\.goo\.gl|goo\.gl\/maps/.test(bruto)
-          ? "Link curto não serve: ele esconde a coordenada. Abra no navegador e copie o link longo."
+          ? "Link curto: ao sair do campo eu abro o link e pego o ponto."
           : "Não achei coordenada aqui. Vale link longo do Google Maps ou \"-23.96, -46.33\".")
         : "Sem isto, o mapa procura pelo endereço escrito acima.";
   }
@@ -6287,6 +6298,20 @@ function modoForm(tipo){
   }
   $("#btn-salvar").textContent = textoBotaoSalvar();
 }
+/* formulário: colou o link no ponto exato → preenche destino e cidade */
+(function(){
+  const fp = $("#f-ponto");
+  if(!fp) return;
+  let ultimo = "";
+  const ler = async () => {
+    const v = fp.value.trim();
+    if(!v || v === ultimo) return;
+    ultimo = v;
+    if(await preencherPeloPonto(fp, $("#f-dest"), $("#f-cidade"))){ ultimo = fp.value.trim(); salvarRascunho(); }
+  };
+  fp.addEventListener("paste", () => setTimeout(ler, 0));
+  fp.addEventListener("change", ler);
+})();
 document.querySelectorAll(".tipo-op").forEach(b => {
   b.onclick = () => { modoForm(b.dataset.tipo); if(b.dataset.tipo === "direta") pintarOpcoesJunto($("#f-junto").value, editando); salvarRascunho(); };
 });
@@ -7978,6 +8003,75 @@ function coordenadaEm(texto){
     if(lat >= -34 && lat <= 6 && lon >= -74 && lon <= -34) return { lat, lon };
   }
   return null;
+}
+
+/* =========================================================
+   PONTO EXATO → DESTINO
+   Colou o link do Google Maps no ponto exato: o resto sai dele.
+   Link curto (maps.app.goo.gl) é aberto no servidor (função
+   expandir-link), porque o navegador não pode seguir o
+   redirecionamento. Do link longo sai o nome e o endereço do lugar
+   (/maps/place/…) e a coordenada; se só tiver coordenada, o
+   endereço vem da busca reversa do OpenStreetMap.
+   Só preenche destino e cidade que estiverem vazios.
+   ========================================================= */
+const LINK_CURTO = /https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs)\/\S+/i;
+async function expandirLink(curto){
+  const t = await papel();
+  const r = await fetch(SUPABASE_URL + "/functions/v1/expandir-link", { method:"POST",
+    headers:{ "apikey":SUPABASE_KEY, "Authorization":"Bearer " + (t || SUPABASE_KEY), "Content-Type":"application/json" },
+    body: JSON.stringify({ url: curto }) });
+  if(!r.ok) throw new Error("não abriu o link (" + r.status + ")");
+  return (await r.json()).url;
+}
+function lugarDoLink(url){
+  const m = String(url).match(/\/maps\/place\/([^/@?]+)/);
+  if(!m) return null;
+  let t = "";
+  try{ t = decodeURIComponent(m[1].replace(/\+/g, " ")).trim(); }catch(e){ return null; }
+  if(!t || coordenadaEm(t)) return null;
+  /* "Oficina X, R. Taubaté, 1300 - Bairro, Santos - SP, 11015-300" */
+  const p = t.match(/^(.*),\s*([^,]+?)\s*-\s*([A-Z]{2})(?:,\s*\d{5}-?\d{3})?\s*$/);
+  return p ? { destino: p[1].trim(), cidade: p[2].trim() } : { destino: t, cidade: "" };
+}
+async function enderecoDaCoordenada(lat, lon){
+  try{
+    const r = await fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&lat=" + lat + "&lon=" + lon,
+      { headers:{ "Accept":"application/json" } });
+    if(!r.ok) return null;
+    const a = (await r.json()).address || {};
+    const rua = [a.road, a.house_number].filter(Boolean).join(", ");
+    const bairro = a.suburb || a.neighbourhood || a.quarter || "";
+    const destino = [rua, bairro].filter(Boolean).join(" - ");
+    return destino ? { destino, cidade: a.city || a.town || a.municipality || a.village || "" } : null;
+  }catch(e){ return null; }
+}
+/* lê o ponto colado e devolve { ponto (link longo), destino, cidade } */
+async function lerPontoColado(texto){
+  let url = String(texto || "").trim();
+  const curto = url.match(LINK_CURTO);
+  if(curto){
+    recado("Abrindo o link do Google Maps…");
+    url = await expandirLink(curto[0]);
+  }
+  const c = coordenadaEm(url);
+  const lugar = lugarDoLink(url) || (c ? await enderecoDaCoordenada(c.lat, c.lon) : null);
+  return { ponto: url, coordenada: c, destino: lugar ? lugar.destino : "", cidade: lugar ? lugar.cidade : "" };
+}
+/* preenche campos de um formulário a partir do ponto; devolve true se mudou algo */
+async function preencherPeloPonto(campoPonto, campoDestino, campoCidade){
+  const bruto = campoPonto.value.trim();
+  if(!bruto || (!LINK_CURTO.test(bruto) && !/google\.[a-z.]+\/maps|maps\.google/.test(bruto) && !coordenadaEm(bruto))) return false;
+  try{
+    const r = await lerPontoColado(bruto);
+    let mudou = false;
+    if(r.ponto !== bruto && coordenadaEm(r.ponto)){ campoPonto.value = r.ponto; mudou = true; }
+    if(r.destino && campoDestino && !campoDestino.value.trim()){ campoDestino.value = r.destino; mudou = true; }
+    if(r.cidade && campoCidade && !campoCidade.value.trim()){ campoCidade.value = r.cidade; mudou = true; }
+    if(!r.coordenada) recado("O link abriu, mas não trouxe a coordenada — confira o destino");
+    else if(mudou) recado("Ponto reconhecido" + (r.destino ? " — destino preenchido pelo link" : ""));
+    return mudou;
+  }catch(err){ recado("Não consegui ler o link: " + err.message); return false; }
 }
 
 /* resolve um endereço em coordenadas, do mais fino ao mais grosso */
