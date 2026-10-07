@@ -1033,6 +1033,90 @@ html[data-papel="leitura"] .tira-foto{display:none}
 .a-escuro i:first-child{background:#2E3A12} .a-escuro i:last-child{background:#FFF}
 .a-auto{background:linear-gradient(105deg,#FFFFFF 0 50%,#000000 50% 100%)}
 .a-auto i:first-child{background:#8FA84A} .a-auto i:last-child{background:#888}
+
+/* ============================================================
+   CELULAR
+   No telefone o topo e os filtros comiam meia tela antes do
+   primeiro carro, e cada cartão ocupava a altura inteira. Aqui:
+   topo enxuto que encolhe ao rolar (fica só a linha das abas),
+   filtros numa linha que rola de lado com o resto atrás de um
+   botão, e cartão mais denso. Sem vidro desfocado no topo: o
+   desfoque é refeito a cada quadro da rolagem e é o que mais
+   pesa num celular comum.
+   ============================================================ */
+.filtros-linha,.filtros-extra{display:contents}
+.mais-filtros{display:none}
+@media (max-width:47.99rem){
+  .topo{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--fundo);padding:calc(env(safe-area-inset-top,0px) + .5rem) .875rem 0}
+  .topo::after{display:none}
+  .cabecalho{gap:.375rem;align-items:center;flex-wrap:nowrap;flex-direction:column;align-items:stretch}
+  h1{font-size:1.375rem}
+  .marca{width:1.6rem;height:1rem;margin-right:.375rem}
+  .data-hoje{margin-top:.25rem;font-size:.625rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .indicadores{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -.875rem;padding:0 .875rem}
+  .indicadores::-webkit-scrollbar{display:none}
+  .ind{padding:.25rem .625rem;flex-shrink:0}
+  .ind b{font-size:.9375rem}
+  .ind span{font-size:.5625rem}
+  .abas{margin-top:.375rem}
+  .aba{padding:.5rem .25rem .625rem;margin-right:1rem;font-size:.875rem}
+  /* rolou para baixo: some o título, ficam as abas */
+  html.rolou .cabecalho{display:none}
+  html.rolou .topo{padding-top:calc(env(safe-area-inset-top,0px) + .125rem)}
+
+  .conteudo{padding:.75rem .75rem calc(6rem + var(--seguro-b))}
+  .controles{gap:.5rem;margin-bottom:.75rem}
+  .busca{flex:1 1 auto;min-width:0;padding:.5625rem .875rem}
+  .mais-filtros{display:inline-flex;align-items:center;gap:.375rem;flex-shrink:0;background:var(--fundo);
+    border:1px solid var(--separador);border-radius:var(--pilula);padding:.5625rem .875rem;font:inherit;font-size:.875rem;color:var(--rotulo);cursor:pointer}
+  .mais-filtros[aria-expanded="true"]{background:var(--rotulo);color:var(--fundo);border-color:var(--rotulo)}
+  .mf-n:not(:empty){background:var(--laranja);color:#fff;border-radius:99px;font-size:.6875rem;font-weight:700;padding:0 .375rem;min-width:1.125rem;text-align:center}
+  .filtros-linha{display:flex;gap:.375rem;width:100%;overflow-x:auto;scrollbar-width:none;margin:0 -.75rem;padding:0 .75rem;flex:0 0 calc(100% + 1.5rem)}
+  .filtros-linha::-webkit-scrollbar{display:none}
+  .filtros-linha .filtro{flex-shrink:0;padding:.4375rem .8125rem;font-size:.8125rem}
+  .filtros-extra{display:none;width:100%;flex-wrap:wrap;gap:.5rem}
+  .controles.abertos .filtros-extra{display:flex}
+  .filtros-extra .selecao{flex:1 1 9rem}
+  .filtros-extra .exportar{margin-left:0;width:100%}
+
+  /* cartão denso — #lista-patio na frente para vencer as regras do layout escolhido */
+  #lista-patio .grade{grid-template-columns:minmax(0,1fr);gap:.5rem}
+  #lista-patio .grupo-cab{padding:.5rem .75rem .5rem .875rem;margin-bottom:.5rem}
+  #lista-patio .grupo-cab h2{font-size:1rem}
+  #lista-patio .cartao{padding:.625rem .75rem .625rem .9375rem}
+  #lista-patio .cartao:active{transform:scale(.98)}
+  #lista-patio .cartao .placa .num{font-size:.8125rem;padding:.0625rem .4375rem .125rem}
+  #lista-patio .cartao .placa .br{font-size:.3125rem;padding:0}
+  #lista-patio .c-dias b{font-size:1.25rem}
+  #lista-patio .c-dias span{font-size:.5rem}
+  #lista-patio .c-modelo{margin-top:.3125rem;font-size:.9375rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #lista-patio .c-fotos{margin-top:.375rem;gap:.25rem}
+  #lista-patio .c-fotos button{width:2.375rem;height:2.375rem;border-radius:.5rem}
+  #lista-patio .c-marca{margin-top:.375rem;gap:.375rem}
+  #lista-patio .c-marca .selo-topo,#lista-patio .c-marca .par-logo{transform:scale(.8);transform-origin:left center;margin-right:-.5rem}
+  #lista-patio .c-dest{margin-top:.4375rem;padding-top:.4375rem;font-size:.8125rem;line-height:1.35}
+  #lista-patio .c-pe{margin-top:.375rem}
+  #lista-patio .c-pe .zapear{width:1.875rem;height:1.875rem}
+  #lista-patio .c-pe .arquivar{padding:.25rem .625rem;font-size:.75rem}
+  #lista-patio .c-motorista,#lista-patio .c-junto{margin-top:.25rem}
+  /* placa, modelo e dias numa linha só: o modelo deixa de ocupar uma linha inteira */
+  #lista-patio .cartao{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:.625rem;align-items:center}
+  #lista-patio .cartao > *{grid-column:1/-1}
+  #lista-patio .cartao > .puxa-cartao{grid-column:auto}
+  #lista-patio .c-topo{display:contents}
+  #lista-patio .c-topo > .placa{grid-column:1;grid-row:1}
+  #lista-patio .c-topo > .c-dias{grid-column:3;grid-row:1;margin-left:0}
+  #lista-patio .c-topo > .c-nota{grid-column:1/-1;grid-row:2;justify-self:start;margin-top:.375rem}
+  #lista-patio .cartao > .c-modelo{grid-column:2;grid-row:1;margin-top:0}
+  #lista-patio .c-modelo .marca-foto{display:none}
+  /* destino, cidade e data numa linha só */
+  #lista-patio .c-dest:not(.c-rota){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #lista-patio .c-dest:not(.c-rota) br{display:none}
+  #lista-patio .c-dest .cd::before,#lista-patio .c-dest .dt::before{content:" · "}
+  #lista-patio .c-dest b + .cd::before{content:" · "}
+  #lista-patio .c-dest > .cd:first-child::before,#lista-patio .c-dest > .dt:first-child::before{content:""}
+  .controles .busca{flex:1 1 0;width:auto;min-width:0}
+}
 /* MENU RÁPIDO */
 .menu-rapido{position:fixed;z-index:200;min-width:14rem;background:var(--superficie);color:var(--rotulo);
   border:1px solid var(--separador);border-radius:14px;box-shadow:var(--sombra-g,0 12px 32px rgba(0,0,0,.22));padding:.375rem;
@@ -2291,11 +2375,15 @@ html[data-papel="leitura"] #bloco-avisos{display:none}
   <section id="p-patio">
     <div class="controles">
       <input class="busca" id="busca" type="text" placeholder="Buscar placa, modelo, seguradora ou destino">
+      <button class="mais-filtros" id="mais-filtros" type="button" aria-expanded="false">Filtros<span class="mf-n" id="mf-n"></span></button>
+      <div class="filtros-linha">
       <button class="filtro" aria-pressed="true" data-f="todos">Todos</button>
       <button class="filtro" aria-pressed="false" data-f="Na base">Na base</button>
       <button class="filtro" aria-pressed="false" data-f="acao">Requer ação</button>
       <button class="filtro" aria-pressed="false" data-f="Entregue">Entregues</button>
       <button class="filtro" aria-pressed="false" data-f="arquivo">Arquivo</button>
+      </div>
+      <div class="filtros-extra">
       <select class="selecao" id="sel-seg" aria-label="Filtrar por seguradora"></select>
       <select class="selecao" id="sel-cidade" aria-label="Filtrar por cidade de destino"></select>
       <!-- "Ordem:" em toda opção porque o seletor fechado mostra só a
@@ -2321,6 +2409,7 @@ html[data-papel="leitura"] #bloco-avisos{display:none}
           <button role="menuitem" id="exp-detalhe"><b>Planilha detalhada</b><span>Todos os campos, para o Excel</span></button>
         </div>
       </span>
+      </div>
     </div>
     <div id="lista-patio"></div>
   </section>
@@ -2690,7 +2779,10 @@ html[data-papel="leitura"] #bloco-avisos{display:none}
 <div class="folha-papel" id="folha-papel"></div>
 <div class="recado" id="recado" role="status"></div>
 
-<script>/* Leaflet 1.9 — biblioteca de mapa, embutida */
+<!-- Leaflet fica guardado como texto: o navegador não gasta tempo lendo e
+     compilando ~150 KB de mapa em toda abertura. Só vira código quando
+     alguém abre a aba do mapa (garantirLeaflet). Continua tudo no arquivo. -->
+<script type="text/plain" id="leaflet-src">/* Leaflet 1.9 — biblioteca de mapa, embutida */
 /* @preserve
  * Leaflet 1.9.4, a JS library for interactive maps. https://leafletjs.com
  * (c) 2010-2023 Vladimir Agafonkin, (c) 2010-2011 CloudMade
@@ -4946,8 +5038,8 @@ function cartao(v){
       ? '<div class="c-dest c-rota"><b>Coleta:</b> '+esc(v.origem||"a definir")+
           '<br><b>Entrega:</b> '+esc(v.destino ? destinoLegivel(v.destino) : "a definir")+(v.cidade?' · '+esc(v.cidade):'')+'</div>'
       : (v.destino||v.data ? '<div class="c-dest">'+(v.destino?'<b>'+esc(destinoLegivel(v.destino))+'</b>':'')+
-      (v.cidade?'<br>'+esc(v.cidade):'')+
-      (v.data?'<br>'+fmtData(v.data)+(v.hora?" · "+fmtHora(v.hora):""):'')+'</div>' : ''))+
+      (v.cidade?'<br><span class="cd">'+esc(v.cidade)+'</span>':'')+
+      (v.data?'<br><span class="dt">'+fmtData(v.data)+(v.hora?" · "+fmtHora(v.hora):"")+'</span>':'')+'</div>' : ''))+
     (enviandoFoto[v.id] ? '<div class="c-envio" aria-live="polite">'+esc(enviandoFoto[v.id])+'</div>' : '')+
     '<div class="c-pe">'+
       (selos.length?'<div class="selos">'+selos.join("")+'</div>':'')+
@@ -5036,6 +5128,7 @@ let ordemStatus = (function(){
 function pintarPatio(){
   pintarSeguradoras();
   pintarCidades();
+  contarFiltrosExtra();
   let l = filtrados();
   const alvo = $("#lista-patio");
   if(!dados.veiculos.length){
@@ -8123,7 +8216,16 @@ function distanciaKm(a, b){
 }
 
 let mapaPendente = false;
+function garantirLeaflet(){
+  if(window.L && window.L.map) return;
+  const fonte = document.getElementById("leaflet-src");
+  if(!fonte) return;
+  const s = document.createElement("script");
+  s.textContent = fonte.textContent;
+  document.head.appendChild(s);
+}
 async function pintarMapa(){
+  garantirLeaflet();
   /* clique no filtro durante a fila de localização não pode ser engolido:
      fica marcado e a repintura acontece assim que a fila termina */
   if(mapaOcupado){ mapaPendente = true; return; }
@@ -8556,7 +8658,7 @@ function trocarAba(nome){
   }
   moverBarra(botao);
 }
-function pintar(){ pintarIndicadores(); pintarPatio(); pintarAgenda(); medirTopo(); if(!$("#p-numeros").classList.contains("oculto")) pintarNumeros(); }
+function pintar(){ pintarIndicadores(); pintarPatio(); pintarAgenda(); if(!$("#p-numeros").classList.contains("oculto")) pintarNumeros(); }
 
 /* =========================================================
    ATUALIZAÇÃO SOZINHA
@@ -8685,10 +8787,49 @@ addEventListener("visibilitychange", () => {
   if(!aoVivo && Date.now() - ultimaCarga > 20000) atualizarSozinho();
 });
 /* a altura da barra do topo manda no ponto onde os cabeçalhos grudam */
+/* celular: botão Filtros abre seguradora, destino, ordem e exportar */
+(function(){
+  const b = $("#mais-filtros");
+  if(!b) return;
+  b.onclick = () => {
+    const c = b.closest(".controles");
+    const aberto = !c.classList.contains("abertos");
+    c.classList.toggle("abertos", aberto);
+    b.setAttribute("aria-expanded", String(aberto));
+  };
+})();
+function contarFiltrosExtra(){
+  const n = (segSel ? 1 : 0) + (cidadeSel ? 1 : 0) + (ordemLista !== "dias-desc" ? 1 : 0);
+  const el = $("#mf-n"); if(el) el.textContent = n ? String(n) : "";
+}
+/* celular: rolou para baixo, o título some e ficam só as abas; voltou ao topo, reaparece */
+(function(){
+  if(!matchMedia) return;
+  const celular = matchMedia("(max-width: 47.99rem)");
+  let pedido = false;
+  addEventListener("scroll", () => {
+    if(pedido) return; pedido = true;
+    requestAnimationFrame(() => {
+      pedido = false;
+      const y = scrollY, h = document.documentElement;
+      if(!celular.matches){ h.classList.remove("rolou"); return; }
+      if(y > 120 && !h.classList.contains("rolou")) h.classList.add("rolou");
+      else if(y < 40 && h.classList.contains("rolou")) h.classList.remove("rolou");
+    });
+  }, { passive:true });
+})();
+/* Medir o topo a cada repintura forçava o navegador a recalcular a tela
+   inteira no meio do desenho (~100 ms num celular comum). Agora quem avisa
+   é o próprio topo, só quando a altura dele muda de verdade. */
+var alturaTopo = 0;   // var: medirTopo é chamada antes desta linha ser lida
 function medirTopo(){
   const t = $("#topo");
-  if(t) document.documentElement.style.setProperty("--topo-h", t.offsetHeight + "px");
+  if(!t) return;
+  const h = t.offsetHeight;
+  if(h !== alturaTopo){ alturaTopo = h; document.documentElement.style.setProperty("--topo-h", h + "px"); }
 }
+if(window.ResizeObserver && document.getElementById("topo"))
+  new ResizeObserver(() => medirTopo()).observe(document.getElementById("topo"));
 
 document.addEventListener("click", e => {
   const aba = e.target.closest(".aba");      if(aba){ trocarAba(aba.dataset.aba); return; }
