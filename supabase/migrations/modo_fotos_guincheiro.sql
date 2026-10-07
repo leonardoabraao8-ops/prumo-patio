@@ -1,5 +1,5 @@
 -- Modo fotos (guincheiros) + leitura do pátio só para editor/visualizador.
--- Rodar inteiro no Supabase → SQL Editor → New query → Run.
+-- Aplicado em 06/10/2026 (políticas trocadas com ALTER POLICY, mesmo efeito).
 
 create or replace function public.pode_ler() returns boolean
 language sql stable security definer set search_path = public as $$
@@ -68,7 +68,6 @@ begin
     select url into v_antiga from fotos_registro where veiculo = p_veiculo and angulo = p_angulo order by criado desc limit 1;
     if v_antiga is not null then
       v_fotos := coalesce((select jsonb_agg(x) from jsonb_array_elements(v_fotos) x where x #>> '{}' <> v_antiga), '[]'::jsonb);
-      delete from fotos_registro where veiculo = p_veiculo and angulo = p_angulo;
     end if;
   end if;
   v_fotos := v_fotos || to_jsonb(p_url);
