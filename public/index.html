@@ -1079,42 +1079,50 @@ html[data-papel="leitura"] .tira-foto{display:none}
   .filtros-extra .selecao{flex:1 1 9rem}
   .filtros-extra .exportar{margin-left:0;width:100%}
 
-  /* cartão denso — #lista-patio na frente para vencer as regras do layout escolhido */
-  #lista-patio .grade{grid-template-columns:minmax(0,1fr);gap:.5rem}
+  /* duas colunas de cartão — #lista-patio na frente para vencer as regras do layout escolhido.
+     Cartão estreito: placa e dias em cima, modelo embaixo, destino em duas
+     linhas no máximo. "Arquivar" sai do rodapé: fica no menu do toque longo. */
+  #lista-patio .grade{grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
   #lista-patio .grupo-cab{padding:.5rem .75rem .5rem .875rem;margin-bottom:.5rem}
   #lista-patio .grupo-cab h2{font-size:1rem}
-  #lista-patio .cartao{padding:.625rem .75rem .625rem .9375rem}
-  #lista-patio .cartao:active{transform:scale(.98)}
-  #lista-patio .cartao .placa .num{font-size:.8125rem;padding:.0625rem .4375rem .125rem}
+  #lista-patio .cartao{padding:.5625rem .5625rem .5625rem .75rem;border-radius:.875rem}
+  #lista-patio .cartao::before{width:4px}
+  #lista-patio .cartao:active{transform:scale(.97)}
+  #lista-patio .puxa-cartao{display:none}
+  #lista-patio .c-topo{align-items:center;gap:.25rem}
+  #lista-patio .cartao .placa .num{font-size:.75rem;padding:.0625rem .3125rem .125rem;letter-spacing:.05em}
   #lista-patio .cartao .placa .br{font-size:.3125rem;padding:0}
-  #lista-patio .c-dias b{font-size:1.25rem}
-  #lista-patio .c-dias span{font-size:.5rem}
-  #lista-patio .c-modelo{margin-top:.3125rem;font-size:.9375rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #lista-patio .c-fotos{margin-top:.375rem;gap:.25rem}
-  #lista-patio .c-fotos button{width:2.375rem;height:2.375rem;border-radius:.5rem}
-  #lista-patio .c-marca{margin-top:.375rem;gap:.375rem}
-  #lista-patio .c-marca .selo-topo,#lista-patio .c-marca .par-logo{transform:scale(.8);transform-origin:left center;margin-right:-.5rem}
-  #lista-patio .c-dest{margin-top:.4375rem;padding-top:.4375rem;font-size:.8125rem;line-height:1.35}
-  #lista-patio .c-pe{margin-top:.375rem}
-  #lista-patio .c-pe .zapear{width:1.875rem;height:1.875rem}
-  #lista-patio .c-pe .arquivar{padding:.25rem .625rem;font-size:.75rem}
-  #lista-patio .c-motorista,#lista-patio .c-junto{margin-top:.25rem}
-  /* placa, modelo e dias numa linha só: o modelo deixa de ocupar uma linha inteira */
-  #lista-patio .cartao{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:.625rem;align-items:center}
-  #lista-patio .cartao > *{grid-column:1/-1}
-  #lista-patio .cartao > .puxa-cartao{grid-column:auto}
-  #lista-patio .c-topo{display:contents}
-  #lista-patio .c-topo > .placa{grid-column:1;grid-row:1}
-  #lista-patio .c-topo > .c-dias{grid-column:3;grid-row:1;margin-left:0}
-  #lista-patio .c-topo > .c-nota{grid-column:1/-1;grid-row:2;justify-self:start;margin-top:.375rem}
-  #lista-patio .cartao > .c-modelo{grid-column:2;grid-row:1;margin-top:0}
+  #lista-patio .c-dias b{font-size:1.125rem}
+  #lista-patio .c-dias span{display:none}
+  #lista-patio .c-dias.c-quando span{display:block;font-size:.5rem}
+  #lista-patio .c-modelo{margin-top:.375rem;font-size:.8125rem;font-weight:540;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #lista-patio .c-modelo .marca-foto{display:none}
-  /* destino, cidade e data numa linha só */
-  #lista-patio .c-dest:not(.c-rota){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* nota colada desce para baixo da placa, na largura toda do cartão */
+  #lista-patio .c-topo{flex-wrap:wrap}
+  #lista-patio .c-topo > .c-nota{order:3;flex:1 1 100%;max-width:none;margin:.375rem 0 0;transform:rotate(-.6deg);
+    font-size:.625rem;padding:.3125rem .4375rem .375rem 1.25rem}
+  #lista-patio .c-fotos{margin-top:.3125rem;gap:.1875rem}
+  #lista-patio .c-fotos button{width:1.875rem;height:1.875rem;border-radius:.375rem}
+  #lista-patio .c-fotos button:nth-child(n+4){display:none}
+  #lista-patio .c-marca{margin-top:.3125rem;gap:.25rem;flex-wrap:nowrap;overflow:hidden}
+  #lista-patio .c-marca .selo-topo,#lista-patio .c-marca .par-logo{transform:scale(.7);transform-origin:left center;margin-right:-.75rem}
+  #lista-patio .c-marca .num-assist{font-size:.625rem}
+  #lista-patio .c-marca .nome-seg{font-size:.6875rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* destino numa linha; cidade e data na de baixo */
+  #lista-patio .c-dest{margin-top:.375rem;padding-top:.375rem;font-size:.6875rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #lista-patio .c-dest:not(.c-rota) br{display:none}
-  #lista-patio .c-dest .cd::before,#lista-patio .c-dest .dt::before{content:" · "}
-  #lista-patio .c-dest b + .cd::before{content:" · "}
-  #lista-patio .c-dest > .cd:first-child::before,#lista-patio .c-dest > .dt:first-child::before{content:""}
+  #lista-patio .c-dest > b{display:block;overflow:hidden;text-overflow:ellipsis}
+  #lista-patio .c-dest .cd + br + .dt::before{content:" · "}
+  #lista-patio .c-dest.c-rota{white-space:normal;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+  #lista-patio .c-motorista,#lista-patio .c-junto{margin-top:.25rem;font-size:.6875rem}
+  #lista-patio .c-motorista svg,#lista-patio .c-junto svg{width:.75rem;height:.75rem}
+  #lista-patio .c-pe{margin-top:.375rem;gap:.25rem;flex-wrap:wrap}
+  #lista-patio .c-pe .selos{flex:1 1 100%;order:-1}
+  #lista-patio .c-pe .selo{font-size:.5625rem;padding:.0625rem .3125rem}
+  #lista-patio .c-pe .zapear{width:1.75rem;height:1.75rem}
+  #lista-patio .c-pe .zapear svg{width:.8125rem;height:.8125rem}
+  #lista-patio .c-pe .arquivar{display:none}
+  #lista-patio .c-pe .notar{margin-left:auto}
   .controles .busca{flex:1 1 0;width:auto;min-width:0}
 }
 /* MENU RÁPIDO */
